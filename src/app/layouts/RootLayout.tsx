@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   ChevronRight,
+  MessageCircle,
 } from "lucide-react";
 import dairiLogo from "../../imports/dairi-logo.svg";
 
@@ -20,6 +21,7 @@ const navigation = [
   { name: "Products", href: "/products", icon: Package },
   { name: "Collections", href: "/collections", icon: Layers },
   { name: "Lookbooks", href: "/lookbooks", icon: BookOpen },
+  { name: "Client activity", href: "/activity", icon: MessageCircle },
   { name: "Settings", href: "/settings", icon: SettingsIcon },
 ];
 

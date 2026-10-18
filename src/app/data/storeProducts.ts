@@ -1,8 +1,26 @@
-import img1 from "../../imports/image-1.png";
-import img2 from "../../imports/image-2.png";
-import img3 from "../../imports/image-3.png";
-import img4 from "../../imports/image-4.png";
-import img9 from "../../imports/image-9.png";
+import img1 from "../../imports/image-1.webp";
+import img2 from "../../imports/image-2.webp";
+import img3 from "../../imports/image-3.webp";
+import img4 from "../../imports/image-4.webp";
+import img9 from "../../imports/image-9.webp";
+import heroImage from "../../imports/image.webp";
+import type { Product } from "../types";
+
+const optimizedLocalImages: Record<string, string> = {
+  "image.png": heroImage,
+  "image-1.png": img1,
+  "image-2.png": img2,
+  "image-3.png": img3,
+  "image-4.png": img4,
+  "image-9.png": img9,
+};
+
+export function upgradeLocalImageReference(source: string): string {
+  if (!source || /^(data:|https?:|blob:)/i.test(source)) return source;
+  const fileName = source.split(/[?#]/, 1)[0].split("/").pop() ?? "";
+  const legacyName = fileName.match(/^(image(?:-\d+)?)(?:-[A-Za-z0-9_-]+)?\.png$/i)?.[1];
+  return legacyName ? optimizedLocalImages[`${legacyName}.png`] ?? source : source;
+}
 
 export interface StoreProduct {
   id: string;
@@ -209,3 +227,23 @@ export const storeProducts: StoreProduct[] = [
 
 export const getStoreProduct = (id: string | undefined) =>
   storeProducts.find((product) => product.id === id);
+
+export function toStoreProduct(product: Product): StoreProduct {
+  return {
+    id: product.id,
+    name: product.name,
+    category: product.category,
+    color: product.color ?? "DAIRI",
+    colorHex: product.colorHex ?? "#111111",
+    price: product.price,
+    image: product.images[0] ?? "",
+    isNew: product.tags.includes("new"),
+    isBestseller: product.tags.includes("bestseller"),
+    description: product.description,
+    details: product.details ?? [product.description],
+    material: product.material ?? "Details coming soon",
+    fit: product.fit ?? "See product description",
+    care: product.care ?? "Follow the garment care label",
+    sizes: product.sizes ?? ["XS", "S", "M", "L", "XL"],
+  };
+}

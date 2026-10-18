@@ -1,7 +1,7 @@
-import tailoring from "../../imports/image-4.png";
-import store from "../../imports/image-1.png";
-import atelier from "../../imports/image-2.png";
-import accessory from "../../imports/image-9.png";
+import tailoring from "../../imports/image-4.webp";
+import store from "../../imports/image-1.webp";
+import atelier from "../../imports/image-2.webp";
+import accessory from "../../imports/image-9.webp";
 
 export const journalPosts = [
   {

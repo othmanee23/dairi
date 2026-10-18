@@ -14,12 +14,21 @@ import { toast } from 'sonner';
 import { Product } from '../../types';
 import dairiLogo from '../../../imports/dairi-logo.svg';
 
-const PRODUCTS_PER_PAGE = 9;
+const layoutSpecs = {
+  minimal: { perPage: 4, columns: 2 },
+  editorial: { perPage: 9, columns: 3 },
+  magazine: { perPage: 6, columns: 2 },
+};
+const formatSpecs = {
+  a4: { width: 210, height: 297, label: 'A4' },
+  square: { width: 210, height: 210, label: 'Square' },
+  portrait: { width: 148, height: 210, label: 'Portrait' },
+};
 
-function chunkProducts(products: Product[]) {
+function chunkProducts(products: Product[], perPage: number) {
   const pages: Product[][] = [];
-  for (let i = 0; i < products.length; i += PRODUCTS_PER_PAGE) {
-    pages.push(products.slice(i, i + PRODUCTS_PER_PAGE));
+  for (let i = 0; i < products.length; i += perPage) {
+    pages.push(products.slice(i, i + perPage));
   }
   return pages.length > 0 ? pages : [[]];
 }
@@ -35,12 +44,14 @@ function getCatalogNumber(product: Product, index: number) {
 function CatalogCoverPage({
   title,
   image,
+  format,
 }: {
   title: string;
   image: string;
+  format: keyof typeof formatSpecs;
 }) {
   return (
-    <div className="lookbook-catalog-page lookbook-cover-page bg-[#f8f7f4] text-black">
+    <div className="lookbook-catalog-page lookbook-cover-page bg-[#f8f7f4] text-black" style={{ aspectRatio: `${formatSpecs[format].width} / ${formatSpecs[format].height}` }}>
       <div className="lookbook-cover-masthead">
         <img src={dairiLogo} alt="DAIRI" className="lookbook-cover-logo" />
         <h2>{title || 'COLLECTION TITLE'}</h2>
@@ -69,16 +80,20 @@ function CatalogPage({
   pageNumber,
   products,
   startIndex,
+  layout,
+  format,
 }: {
   title: string;
   pageNumber: number;
   products: Product[];
   startIndex: number;
+  layout: keyof typeof layoutSpecs;
+  format: keyof typeof formatSpecs;
 }) {
-  const slots = Array.from({ length: PRODUCTS_PER_PAGE }, (_, index) => products[index] || null);
+  const slots = Array.from({ length: layoutSpecs[layout].perPage }, (_, index) => products[index] || null);
 
   return (
-    <div className="lookbook-catalog-page bg-[#f8f7f4] text-black">
+    <div className="lookbook-catalog-page bg-[#f8f7f4] text-black" style={{ aspectRatio: `${formatSpecs[format].width} / ${formatSpecs[format].height}` }}>
       <header className="lookbook-catalog-header">
         <div className="lookbook-catalog-brand">
           <img src={dairiLogo} alt="DAIRI" />
@@ -87,7 +102,7 @@ function CatalogPage({
         <p>PAGE-{pageNumber}</p>
       </header>
 
-      <main className="lookbook-catalog-grid">
+      <main className="lookbook-catalog-grid" style={{ gridTemplateColumns: `repeat(${layoutSpecs[layout].columns}, minmax(0, 1fr))` }}>
         {slots.map((product, index) => (
           <div key={product?.id || `empty-${index}`} className="lookbook-catalog-item">
             {product ? (
@@ -135,7 +150,7 @@ function CatalogPage({
 
 export function LookbookPreview() {
   const { id } = useParams();
-  const { lookbooks, products } = useApp();
+  const { lookbooks, products, settings, updateLookbook } = useApp();
   const [currentPage, setCurrentPage] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -158,7 +173,9 @@ export function LookbookPreview() {
     .map((pid) => products.find((p) => p.id === pid))
     .filter(Boolean) as Product[];
 
-  const productPages = chunkProducts(lookbookProducts);
+  const layoutSpec = layoutSpecs[lookbook.layout];
+  const formatSpec = formatSpecs[lookbook.format];
+  const productPages = chunkProducts(lookbookProducts, layoutSpec.perPage);
   const totalPages = productPages.length;
   const totalPreviewPages = totalPages + 1;
   const isCoverPage = currentPage === 0;
@@ -175,7 +192,9 @@ export function LookbookPreview() {
   };
 
   const handleRegenerate = () => {
-    toast.success('Catalog layout regenerated');
+    updateLookbook(lookbook.id, { layout: settings.defaultLayout, format: settings.defaultFormat, productIds: lookbook.productIds.filter(id => products.some(product => product.id === id)) });
+    setCurrentPage(0);
+    toast.success('Lookbook refreshed with current defaults');
   };
 
   return (
@@ -196,7 +215,7 @@ export function LookbookPreview() {
             </p>
             <h1 className="text-4xl mb-2 font-medium tracking-tight">{lookbook.name}</h1>
             <p className="text-neutral-600">
-              {lookbookProducts.length} products · 9 products per page · numbered catalog layout
+              {lookbookProducts.length} products · {layoutSpec.perPage} products per page · {formatSpec.label} {lookbook.layout} layout
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -225,13 +244,16 @@ export function LookbookPreview() {
               <CatalogCoverPage
                 title={lookbook.coverTitle || lookbook.name}
                 image={lookbook.coverImage || ''}
+                format={lookbook.format}
               />
             ) : (
               <CatalogPage
                 title={lookbook.coverTitle || lookbook.name}
                 pageNumber={Math.max(0, productPageIndex) + 2}
                 products={currentProducts}
-                startIndex={Math.max(0, productPageIndex) * PRODUCTS_PER_PAGE}
+                startIndex={Math.max(0, productPageIndex) * layoutSpec.perPage}
+                layout={lookbook.layout}
+                format={lookbook.format}
               />
             )}
           </div>
@@ -262,11 +284,11 @@ export function LookbookPreview() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
             <div>
               <p className="text-neutral-600 uppercase tracking-wider text-xs mb-1">Format</p>
-              <p>A4 catalog sheet</p>
+              <p>{formatSpec.label} · {formatSpec.width} × {formatSpec.height} mm</p>
             </div>
             <div>
               <p className="text-neutral-600 uppercase tracking-wider text-xs mb-1">Layout</p>
-              <p>3 columns × 3 rows</p>
+              <p>{layoutSpec.columns} columns × {Math.ceil(layoutSpec.perPage / layoutSpec.columns)} rows</p>
             </div>
             <div>
               <p className="text-neutral-600 uppercase tracking-wider text-xs mb-1">Products</p>
@@ -276,10 +298,12 @@ export function LookbookPreview() {
         </div>
       </div>
 
+      <style>{`@media print { @page { margin: 0; size: ${formatSpec.width}mm ${formatSpec.height}mm; } .lookbook-print-root { width: ${formatSpec.width}mm !important; } .lookbook-print-root .lookbook-catalog-page { height: ${formatSpec.height}mm !important; width: ${formatSpec.width}mm !important; } }`}</style>
       <div className="lookbook-print-root" aria-hidden="true">
         <CatalogCoverPage
           title={lookbook.coverTitle || lookbook.name}
           image={lookbook.coverImage || ''}
+          format={lookbook.format}
         />
         {productPages.map((pageProducts, pageIndex) => (
           <CatalogPage
@@ -287,7 +311,9 @@ export function LookbookPreview() {
             title={lookbook.coverTitle || lookbook.name}
             pageNumber={pageIndex + 2}
             products={pageProducts}
-            startIndex={pageIndex * PRODUCTS_PER_PAGE}
+            startIndex={pageIndex * layoutSpec.perPage}
+            layout={lookbook.layout}
+            format={lookbook.format}
           />
         ))}
       </div>

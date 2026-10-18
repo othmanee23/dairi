@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { StoreFooter } from "../../components/store/StoreFooter";
 import { StoreHeader } from "../../components/store/StoreHeader";
 import { journalPosts } from "../../data/journal";
-import heroImage from "../../../imports/image.png";
+import heroImage from "../../../imports/image.webp";
 
 export function Journal() {
   const [featured, ...posts] = journalPosts;

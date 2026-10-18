@@ -4,7 +4,8 @@ import { ChevronDown, Heart } from "lucide-react";
 
 import { StoreFooter } from "../../components/store/StoreFooter";
 import { StoreHeader } from "../../components/store/StoreHeader";
-import { getStoreProduct, storeProducts, StoreProduct } from "../../data/storeProducts";
+import { StoreProduct, toStoreProduct } from "../../data/storeProducts";
+import { useApp } from "../../context/AppContext";
 
 function MiniProduct({ product }: { product: StoreProduct }) {
   return (
@@ -34,17 +35,19 @@ function AccordionRow({ label, children }: { label: string; children: React.Reac
 
 export function ProductDetail() {
   const { id } = useParams();
-  const product = getStoreProduct(id);
-  const [selectedSize, setSelectedSize] = useState(product?.sizes[0] ?? "");
-  const [saved, setSaved] = useState(false);
+  const { products: catalog, wishlist, toggleWishlist, addToCart } = useApp();
+  const product = catalog.find((item) => item.id === id && item.status === "published" && item.showOnWebsite);
+  const storeProduct = product ? toStoreProduct(product) : undefined;
+  const [selectedSize, setSelectedSize] = useState(storeProduct?.sizes[0] ?? "");
   const [added, setAdded] = useState(false);
+  const [sizeChartOpen, setSizeChartOpen] = useState(false);
 
   const related = useMemo(() => {
-    if (!product) return [];
-    return storeProducts.filter((item) => item.id !== product.id).slice(0, 3);
-  }, [product]);
+    if (!storeProduct) return [];
+    return catalog.filter((item) => item.id !== storeProduct.id && item.status === "published" && item.showOnWebsite).map(toStoreProduct).slice(0, 3);
+  }, [storeProduct, catalog]);
 
-  const recentlyViewed = storeProducts.slice(0, 3);
+  const recentlyViewed = catalog.filter((item) => item.status === "published" && item.showOnWebsite).map(toStoreProduct).slice(0, 3);
 
   if (!product) {
     return (
@@ -62,7 +65,7 @@ export function ProductDetail() {
     );
   }
 
-  const imageSet = [product.image, product.image, product.image, product.image];
+  const imageSet = product.images.length ? product.images : [storeProduct.image];
 
   return (
     <div className="store-page min-h-screen bg-white" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -89,21 +92,19 @@ export function ProductDetail() {
             <p className="text-sm leading-6 mb-6">{product.description}</p>
 
             <div className="mb-6">
-              <p className="text-sm font-medium mb-3">Product Color: {product.color}</p>
+              <p className="text-sm font-medium mb-3">Product Color: {storeProduct.color}</p>
               <div className="flex gap-3">
-                <span className="w-5 h-5 rounded-full border border-black/20" style={{ background: product.colorHex }} />
-                <span className="w-5 h-5 rounded-full bg-[#d8d1c8] border border-black/20" />
-                <span className="w-5 h-5 rounded-full bg-[#9da7aa] border border-black/20" />
+                <span className="w-5 h-5 rounded-full border border-black/20" style={{ background: storeProduct.colorHex }} />
               </div>
             </div>
 
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium">Product Size</p>
-                <button className="text-xs underline underline-offset-2">Size Chart</button>
+                <button className="text-xs underline underline-offset-2" onClick={() => setSizeChartOpen(true)}>Size Chart</button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {product.sizes.map((size) => (
+                {storeProduct.sizes.map((size) => (
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
@@ -120,9 +121,13 @@ export function ProductDetail() {
               </div>
             </div>
 
+            {sizeChartOpen && <div role="dialog" aria-modal="true" aria-label="Size guide" className="fixed inset-0 z-[90] bg-black/45 flex items-center justify-center p-6"><div className="bg-white p-7 max-w-md w-full"><div className="flex items-center justify-between mb-5"><h2 className="text-xl">DAIRI size guide</h2><button onClick={() => setSizeChartOpen(false)} aria-label="Close size guide">×</button></div><p className="text-sm text-black/65 leading-6 mb-5">Choose your usual size for a close fit. For an easier drape, size up. Measurements are a guide and may vary by silhouette.</p><div className="grid grid-cols-3 text-sm border-t border-l">{[["Size","Bust","Waist"],["XS","32–33 in","24–25 in"],["S","34–35 in","26–27 in"],["M","36–37 in","28–29 in"],["L","38–40 in","30–32 in"],["XL","41–43 in","33–35 in"]].flat().map((cell,index)=><div key={index} className={`p-3 border-r border-b ${index<3?'font-medium bg-neutral-50':''}`}>{cell}</div>)}</div></div></div>}
+
             <button
               className="store-button-motion w-full bg-black text-white py-3.5 text-sm mb-3"
               onClick={() => {
+                if (!selectedSize) return;
+                addToCart(product.id, selectedSize);
                 setAdded(true);
                 window.setTimeout(() => setAdded(false), 2200);
               }}
@@ -131,20 +136,20 @@ export function ProductDetail() {
             </button>
             <button
               className="store-button-motion w-full flex items-center justify-center gap-2 border border-black/20 py-3.5 text-sm mb-8"
-              onClick={() => setSaved(!saved)}
+              onClick={() => toggleWishlist(product.id)}
             >
-              <Heart size={15} fill={saved ? "black" : "none"} />
-              {saved ? "Saved" : "Save For Later"}
+              <Heart size={15} fill={wishlist.includes(product.id) ? "black" : "none"} />
+              {wishlist.includes(product.id) ? "Saved" : "Save For Later"}
             </button>
 
             <AccordionRow label="Check In-Store Availability">
               Available in select DAIRI stores. Choose your size and contact a stylist to reserve this piece.
             </AccordionRow>
             <AccordionRow label="Fit Details">
-              {product.fit}. If you are between sizes, choose the larger size for an easier drape.
+              {storeProduct.fit}. If you are between sizes, choose the larger size for an easier drape.
             </AccordionRow>
             <AccordionRow label="Fabrication & Care">
-              {product.material}. {product.care}.
+              {storeProduct.material}. {storeProduct.care}.
             </AccordionRow>
             <AccordionRow label="Shipping & Returns">
               Complimentary no-rush shipping on orders over $95. Returns are accepted within 14 days.
@@ -184,8 +189,8 @@ export function ProductDetail() {
             <p className="text-xs">Inspiration for your essential wardrobe</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-[900px] mx-auto">
-            <img src={product.image} alt={`${product.name} editorial detail`} className="aspect-square object-cover object-top bg-[#f6f6f6]" />
-            <img src={related[0]?.image ?? product.image} alt="Fabric stack" className="aspect-square object-cover object-top bg-[#f6f6f6]" />
+            <img src={storeProduct.image} alt={`${product.name} editorial detail`} className="aspect-square object-cover object-top bg-[#f6f6f6]" />
+            <img src={related[0]?.image ?? storeProduct.image} alt="Fabric stack" className="aspect-square object-cover object-top bg-[#f6f6f6]" />
           </div>
         </section>
 

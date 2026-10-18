@@ -12,6 +12,13 @@ export interface Product {
   status: ProductStatus;
   showOnWebsite: boolean;
   createdAt: string;
+  color?: string;
+  colorHex?: string;
+  details?: string[];
+  material?: string;
+  fit?: string;
+  care?: string;
+  sizes?: string[];
 }
 
 export interface Collection {

@@ -2,29 +2,30 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
-import heroImage from "../../../imports/image.png";
-import img1 from "../../../imports/image-1.png";
-import img2 from "../../../imports/image-2.png";
-import img3 from "../../../imports/image-3.png";
-import img4 from "../../../imports/image-4.png";
-import img9 from "../../../imports/image-9.png";
+import heroImage from "../../../imports/image.webp";
+import img1 from "../../../imports/image-1.webp";
+import img2 from "../../../imports/image-2.webp";
+import img3 from "../../../imports/image-3.webp";
+import img4 from "../../../imports/image-4.webp";
+import img9 from "../../../imports/image-9.webp";
 import DairiLogo from "../../../imports/Group1321319317";
 import { StoreFooter } from "../../components/store/StoreFooter";
 import { StoreHeader } from "../../components/store/StoreHeader";
-import { storeProducts, StoreProduct } from "../../data/storeProducts";
+import { StoreProduct, toStoreProduct } from "../../data/storeProducts";
+import { useApp } from "../../context/AppContext";
 
 const CHARCOAL = "#171717";
 const SOFT_TEXT = "#4c4a46";
 
 const featureTiles = [
-  { title: "New Arrivals", image: img1, href: "/store/shop" },
-  { title: "The Casual Edit", image: img4, href: "/store/shop" },
-  { title: "Best-Sellers", image: img3, href: "/store/shop" },
+  { title: "New Arrivals", image: img1, href: "/store/shop?featured=new" },
+  { title: "The Casual Edit", image: img4, href: "/store/shop?category=Sets" },
+  { title: "Best-Sellers", image: img3, href: "/store/shop?featured=bestseller" },
 ];
 
 const editorialTiles = [
-  { title: "The Smart Chic", image: img3, href: "/store/shop" },
-  { title: "Ready To Go", image: img2, href: "/store/shop" },
+  { title: "The Smart Chic", image: img3, href: "/store/shop?featured=bestseller" },
+  { title: "Ready To Go", image: img2, href: "/store/shop?featured=new" },
 ];
 
 const instagramImages = [img1, img2, img3, img4, img9];
@@ -153,8 +154,9 @@ function OpeningLoader({ leaving }: { leaving: boolean }) {
 }
 
 export function StoreFront() {
-  const featuredProducts = storeProducts.slice(6, 11);
-  const spotlightProducts = storeProducts;
+  const { products } = useApp();
+  const spotlightProducts = products.filter(p => p.status === "published" && p.showOnWebsite).map(toStoreProduct);
+  const featuredProducts = spotlightProducts.filter(p => p.isNew || p.isBestseller).slice(0, 5);
   const spotlightRailRef = useRef<HTMLDivElement>(null);
   const [showLoader, setShowLoader] = useState(false);
   const [loaderLeaving, setLoaderLeaving] = useState(false);

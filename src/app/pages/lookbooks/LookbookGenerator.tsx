@@ -26,6 +26,7 @@ import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { toast } from 'sonner';
 import { Lookbook } from '../../types';
 import dairiLogo from '../../../imports/dairi-logo.svg';
+import { readOptimizedImage } from '../../utils/image';
 
 const ItemType = {
   PRODUCT: 'product',
@@ -92,7 +93,7 @@ function DraggableProduct({ productId, index, moveProduct, removeProduct }: Drag
 }
 
 function LookbookGeneratorContent() {
-  const { products, collections, addLookbook } = useApp();
+  const { products, collections, addLookbook, settings } = useApp();
   const navigate = useNavigate();
 
   const [lookbookName, setLookbookName] = useState('');
@@ -132,17 +133,7 @@ function LookbookGeneratorContent() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setCoverImage(reader.result);
-        toast.success('Cover image uploaded');
-      }
-    };
-    reader.onerror = () => {
-      toast.error('Could not read the selected image');
-    };
-    reader.readAsDataURL(file);
+    readOptimizedImage(file, 1600).then(image => { setCoverImage(image); toast.success('Cover image uploaded'); }).catch(error => toast.error(error instanceof Error ? error.message : 'Could not read selected image'));
   };
 
   const handlePreview = () => {
@@ -156,10 +147,10 @@ function LookbookGeneratorContent() {
       name: lookbookName || 'Untitled Lookbook',
       createdAt: new Date().toISOString().split('T')[0],
       productIds: selectedProducts,
-      layout: 'editorial',
+      layout: settings.defaultLayout,
       coverTitle: coverTitle || lookbookName || 'Untitled',
       coverImage: coverImage.trim() || undefined,
-      format: 'a4',
+      format: settings.defaultFormat,
     };
 
     addLookbook(lookbook);
@@ -258,7 +249,7 @@ function LookbookGeneratorContent() {
                   <div className="border border-neutral-200 bg-neutral-50 p-5 flex flex-col justify-center">
                     <p className="text-sm font-medium mb-2">Cover page</p>
                     <p className="text-sm text-neutral-600 leading-6">
-                      The cover places your DAIRI logo and title above the image. Every PDF includes this cover, followed by A4 catalog pages with 9 numbered products and prices.
+                      The cover places your DAIRI logo and title above the image. The export uses your saved {settings.defaultFormat.toUpperCase()} format and {settings.defaultLayout} layout defaults.
                     </p>
                     {coverImage.trim() && (
                       <button
@@ -274,18 +265,18 @@ function LookbookGeneratorContent() {
               </div>
             </div>
 
-            {/* Fixed PDF Format */}
+            {/* PDF Format */}
             <div className="admin-panel p-6">
               <h2 className="text-lg mb-4 tracking-tight">PDF Format</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="border-2 border-black bg-neutral-50 p-5">
                   <FileText className="w-8 h-8 mb-4" />
-                  <h3 className="text-sm font-medium mb-1">A4 Catalog Layout</h3>
-                  <p className="text-xs text-neutral-600">210 × 297 mm · 3 columns × 3 rows · 9 products per page</p>
+                  <h3 className="text-sm font-medium mb-1">{settings.defaultFormat.toUpperCase()} · {settings.defaultLayout}</h3>
+                  <p className="text-xs text-neutral-600">This lookbook uses the format and layout saved in Settings.</p>
                 </div>
                 <div className="border border-neutral-200 p-5 flex flex-col justify-center">
                   <p className="text-sm text-neutral-600 leading-6">
-                    Layout and page format are fixed so every generated lookbook matches the approved catalog design.
+                    To change defaults, update PDF Defaults in Settings before creating your lookbook.
                   </p>
                 </div>
               </div>

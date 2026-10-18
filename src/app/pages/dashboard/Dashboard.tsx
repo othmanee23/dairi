@@ -10,14 +10,16 @@ import {
   ArrowRight,
   ExternalLink,
   Layers,
+  ShoppingBag,
+  MessageCircle,
 } from "lucide-react";
 import { ImageWithFallback } from "../../components/figma/ImageWithFallback";
 
 export function Dashboard() {
-  const { products, lookbooks, collections } = useApp();
+  const { products, lookbooks, collections, orders, supportRequests } = useApp();
   const navigate = useNavigate();
 
-  const publishedProducts = products.filter((p) => p.status === "published");
+  const publishedProducts = products.filter((p) => p.status === "published" && p.showOnWebsite);
   const draftProducts = products.filter((p) => p.status === "draft");
   const recentProducts = products.slice(0, 6);
 
@@ -33,10 +35,12 @@ export function Dashboard() {
   });
 
   const stats = [
-    { label: "Total Products", value: products.length, icon: Package, detail: "+3 this month" },
+    { label: "Total Products", value: products.length, icon: Package, detail: "In the catalog" },
     { label: "Published", value: publishedProducts.length, icon: Eye, detail: "Live on store" },
     { label: "Drafts", value: draftProducts.length, icon: FileText, detail: "Awaiting review" },
     { label: "Lookbooks", value: lookbooks.length, icon: BookOpen, detail: `${collections.length} collections` },
+    { label: "Local Orders", value: orders.length, icon: ShoppingBag, detail: "Preview checkout only" },
+    { label: "Client Requests", value: supportRequests.length, icon: MessageCircle, detail: "Support inbox" },
   ];
 
   return (
@@ -59,7 +63,7 @@ export function Dashboard() {
           </Link>
         </div>
 
-        <div className="mb-10 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="mb-10 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           {stats.map((stat) => (
             <div key={stat.label} className="admin-metric admin-card p-5 lg:p-6">
               <div className="mb-7 flex items-center justify-between">
@@ -166,7 +170,7 @@ export function Dashboard() {
                   <h3 className="text-sm text-white">{col.name}</h3>
                 </div>
                 <div className="absolute right-3 top-3 bg-white px-2 py-1 text-[9px] uppercase tracking-[1px] text-black">
-                  {col.productCount} items
+                  {products.filter(product => product.collection === col.name).length} items
                 </div>
               </button>
             ))}

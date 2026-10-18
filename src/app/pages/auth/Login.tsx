@@ -4,7 +4,7 @@ import { useApp } from "../../context/AppContext";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { ArrowRight } from "lucide-react";
-import heroImage from "../../../imports/image.png";
+import heroImage from "../../../imports/image.webp";
 
 export function Login() {
   const [email, setEmail] = useState("");

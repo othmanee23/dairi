@@ -16,10 +16,12 @@ import {
 import { ArrowLeft, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Product } from '../../types';
+import { readOptimizedImage } from '../../utils/image';
+import defaultProductImage from '../../../imports/image-1.webp';
 
 export function ProductForm() {
   const { id } = useParams();
-  const { products, addProduct, updateProduct } = useApp();
+  const { products, collections, addProduct, updateProduct } = useApp();
   const navigate = useNavigate();
   const isEditing = !!id;
 
@@ -57,7 +59,7 @@ export function ProductForm() {
     e.preventDefault();
 
     const product: Product = {
-      id: isEditing ? id : Date.now().toString(),
+      id: isEditing ? id! : `dairi-${Date.now().toString(36)}`,
       name: formData.name,
       price: parseFloat(formData.price),
       category: formData.category,
@@ -66,8 +68,15 @@ export function ProductForm() {
       tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
       status: formData.status,
       showOnWebsite: formData.showOnWebsite,
-      images: formData.images.length > 0 ? formData.images : ['https://images.unsplash.com/photo-1680690517143-d813ac08cd13?w=400'],
+      images: formData.images.length > 0 ? formData.images : [defaultProductImage],
       createdAt: existingProduct?.createdAt || new Date().toISOString().split('T')[0],
+      color: existingProduct?.color ?? 'DAIRI',
+      colorHex: existingProduct?.colorHex ?? '#111111',
+      details: existingProduct?.details ?? [formData.description],
+      material: existingProduct?.material ?? 'Details coming soon',
+      fit: existingProduct?.fit ?? 'See product description',
+      care: existingProduct?.care ?? 'Follow the care label',
+      sizes: existingProduct?.sizes ?? ['XS', 'S', 'M', 'L', 'XL'],
     };
 
     if (isEditing) {
@@ -81,18 +90,11 @@ export function ProductForm() {
     navigate('/products');
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      // Mock image upload - in real app, would upload to server
-      const mockUrls = Array.from(files).map(() =>
-        'https://images.unsplash.com/photo-1680690517143-d813ac08cd13?w=400'
-      );
-      setFormData(prev => ({
-        ...prev,
-        images: [...prev.images, ...mockUrls],
-      }));
-    }
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []).filter(file => file.type.startsWith('image/')).slice(0, Math.max(0, 6 - formData.images.length));
+    try { const images = await Promise.all(files.map(file => readOptimizedImage(file))); setFormData(prev => ({ ...prev, images: [...prev.images, ...images] })); }
+    catch (error) { toast.error(error instanceof Error ? error.message : 'Could not process image'); }
+    e.target.value = '';
   };
 
   const removeImage = (index: number) => {
@@ -186,6 +188,7 @@ export function ProductForm() {
                 id="price"
                 type="number"
                 step="0.01"
+                min="0.01"
                 value={formData.price}
                 onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
                 required
@@ -208,6 +211,7 @@ export function ProductForm() {
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="Sets">Sets</SelectItem>
                   <SelectItem value="Dresses">Dresses</SelectItem>
                   <SelectItem value="Tops">Tops</SelectItem>
                   <SelectItem value="Bottoms">Bottoms</SelectItem>
@@ -231,9 +235,7 @@ export function ProductForm() {
                   <SelectValue placeholder="Select collection" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Summer 2026">Summer 2026</SelectItem>
-                  <SelectItem value="Essentials">Essentials</SelectItem>
-                  <SelectItem value="New In">New In</SelectItem>
+                  {collections.map(collection => <SelectItem key={collection.id} value={collection.name}>{collection.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

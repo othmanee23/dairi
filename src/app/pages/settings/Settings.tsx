@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -11,19 +11,44 @@ import {
 } from '../../components/ui/select';
 import { Upload, Save } from 'lucide-react';
 import { toast } from 'sonner';
+import { useApp } from '../../context/AppContext';
+import { readOptimizedImage } from '../../utils/image';
+import defaultProductImage from '../../../imports/image-1.webp';
 
 export function Settings() {
-  const [brandName, setBrandName] = useState('ATELIER');
-  const [primaryColor, setPrimaryColor] = useState('#000000');
-  const [secondaryColor, setSecondaryColor] = useState('#f5f5f5');
-  const [fontFamily, setFontFamily] = useState('inter');
-  const [defaultFormat, setDefaultFormat] = useState('a4');
-  const [defaultLayout, setDefaultLayout] = useState('editorial');
-  const [email, setEmail] = useState('studio@atelier.com');
-  const [name, setName] = useState('Creative Director');
+  const { settings, updateSettings, addProduct } = useApp();
+  const [brandName, setBrandName] = useState(settings.brandName);
+  const [logo, setLogo] = useState(settings.logo);
+  const [primaryColor, setPrimaryColor] = useState(settings.primaryColor);
+  const [secondaryColor, setSecondaryColor] = useState(settings.secondaryColor);
+  const [fontFamily, setFontFamily] = useState(settings.fontFamily);
+  const [defaultFormat, setDefaultFormat] = useState(settings.defaultFormat);
+  const [defaultLayout, setDefaultLayout] = useState(settings.defaultLayout);
+  const [email, setEmail] = useState(settings.email);
+  const [name, setName] = useState(settings.name);
+  useEffect(() => { setBrandName(settings.brandName); setLogo(settings.logo); setPrimaryColor(settings.primaryColor); setSecondaryColor(settings.secondaryColor); setFontFamily(settings.fontFamily); setDefaultFormat(settings.defaultFormat); setDefaultLayout(settings.defaultLayout); setEmail(settings.email); setName(settings.name); }, [settings]);
 
   const handleSave = () => {
+    updateSettings({ brandName, logo, primaryColor, secondaryColor, fontFamily, defaultFormat: defaultFormat as typeof settings.defaultFormat, defaultLayout: defaultLayout as typeof settings.defaultLayout, email, name });
     toast.success('Settings saved successfully');
+  };
+
+  const handleCsvImport = async (file?: File) => {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.csv') || file.size > 10 * 1024 * 1024) { toast.error('Choose a CSV file smaller than 10 MB'); return; }
+    const rows = (await file.text()).split(/\r?\n/).filter(Boolean);
+    if (rows.length < 2) { toast.error('The CSV needs a header and at least one product row'); return; }
+    const parseRow = (row: string) => row.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(cell => cell.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+    const headers = parseRow(rows[0]).map(header => header.toLowerCase().replace(/[^a-z]/g, ''));
+    const imported = rows.slice(1).map(parseRow).map((cells, index) => {
+      const get = (...keys: string[]) => { const i = headers.findIndex(header => keys.includes(header)); return i >= 0 ? cells[i] ?? '' : ''; };
+      const name = get('name', 'productname'); const price = Number(get('price')); if (!name || !Number.isFinite(price) || price <= 0) return null;
+      const status = get('status').toLowerCase() === 'published' ? 'published' as const : 'draft' as const;
+      const image = get('image', 'imageurl');
+      return { id: `import-${Date.now().toString(36)}-${index}`, name, price, category: get('category') || 'Sets', collection: get('collection') || 'DAIRI Edit', description: get('description'), tags: get('tags').split(/[;,]/).map(tag=>tag.trim()).filter(Boolean), status, showOnWebsite: status === 'published', images: image ? [image] : [defaultProductImage], createdAt: new Date().toISOString().slice(0,10) };
+    }).filter((row): row is NonNullable<typeof row> => Boolean(row));
+    if (!imported.length) { toast.error('No valid products found. Include Name and Price columns.'); return; }
+    imported.forEach(addProduct); toast.success(`${imported.length} products imported`);
   };
 
   return (
@@ -46,14 +71,14 @@ export function Settings() {
                 </Label>
                 <div className="flex items-center gap-6">
                   <div className="w-24 h-24 bg-black text-white flex items-center justify-center text-xs tracking-wider">
-                    {brandName}
+                    {logo ? <img src={logo} alt={`${brandName} logo`} className="max-w-full max-h-full object-contain"/> : brandName}
                   </div>
                   <label className="cursor-pointer">
                     <div className="flex items-center gap-2 px-4 py-2 border border-neutral-300 hover:bg-neutral-50 transition-colors">
                       <Upload className="w-4 h-4" />
                       <span className="text-sm">Upload Logo</span>
                     </div>
-                    <input type="file" accept="image/*" className="hidden" />
+                    <input type="file" accept="image/*" className="hidden" onChange={async e=>{const file=e.target.files?.[0]; if(file){try { setLogo(await readOptimizedImage(file, 800)); } catch { toast.error('Could not process the logo image'); }}}} />
                   </label>
                 </div>
               </div>
@@ -220,6 +245,7 @@ export function Settings() {
                 <Button
                   variant="outline"
                   className="border-neutral-300 rounded-none h-12 px-6"
+                  onClick={() => toast.info('Password changes require a connected authentication provider.')}
                 >
                   Change Password
                 </Button>
@@ -232,16 +258,16 @@ export function Settings() {
             <h2 className="text-xl mb-6 tracking-tight">Import Products</h2>
             <div className="admin-panel p-6">
               <p className="text-sm text-neutral-600 mb-6">
-                Import products from a CSV file or Google Sheets. Map your columns to the
-                correct fields during import.
+                Import products from a CSV file. Column names are matched to product fields automatically.
               </p>
-              <div className="border-2 border-dashed border-neutral-300 p-12 text-center hover:border-neutral-400 transition-colors cursor-pointer">
+              <label onDragOver={event=>event.preventDefault()} onDrop={event=>{event.preventDefault(); void handleCsvImport(event.dataTransfer.files[0]);}} className="block border-2 border-dashed border-neutral-300 p-12 text-center hover:border-neutral-400 transition-colors cursor-pointer">
                 <Upload className="w-10 h-10 mx-auto mb-4 text-neutral-400" />
                 <p className="text-sm mb-1">Drop your CSV file here or click to browse</p>
                 <p className="text-xs text-neutral-500">
-                  Supports: .csv, .xlsx — Max 10MB
+                  Supports CSV · Max 10MB
                 </p>
-              </div>
+                <input type="file" accept=".csv,text/csv" className="sr-only" onChange={event => handleCsvImport(event.target.files?.[0])} />
+              </label>
 
               <div className="mt-6 p-4 bg-neutral-50 border border-neutral-200">
                 <h3 className="text-sm mb-3">Field Mapping</h3>

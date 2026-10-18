@@ -19,6 +19,7 @@ export function CollectionsList() {
             <p className="text-neutral-600">{collections.length} collections</p>
           </div>
           <Button
+            onClick={() => navigate('/collections/new')}
             className="admin-button bg-black text-white hover:bg-neutral-800 rounded-none h-12 px-6"
           >
             <Plus className="w-4 h-4 mr-2" />

@@ -1,15 +1,17 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { ChevronDown, Heart } from "lucide-react";
 
 import { StoreFooter } from "../../components/store/StoreFooter";
 import { StoreHeader } from "../../components/store/StoreHeader";
-import { storeProducts, StoreProduct } from "../../data/storeProducts";
+import { StoreProduct, toStoreProduct } from "../../data/storeProducts";
+import { useApp } from "../../context/AppContext";
 
-const categories = ["Outerwear", "Dresses", "Skirts", "Pants & Leggings", "Stretch", "Lounge"];
+const categories = ["Sets", "Dresses", "Tops", "Outerwear", "Accessories"];
 
 function ShopProductCard({ product }: { product: StoreProduct }) {
-  const [wishlisted, setWishlisted] = useState(false);
+  const { wishlist, toggleWishlist } = useApp();
+  const wishlisted = wishlist.includes(product.id);
 
   return (
     <Link to={`/store/products/${product.id}`} className="store-card group block">
@@ -24,7 +26,7 @@ function ShopProductCard({ product }: { product: StoreProduct }) {
           aria-label="Add to wishlist"
           onClick={(event) => {
             event.preventDefault();
-            setWishlisted(!wishlisted);
+            toggleWishlist(product.id);
           }}
         >
           <Heart size={18} fill={wishlisted ? "black" : "none"} />
@@ -39,11 +41,17 @@ function ShopProductCard({ product }: { product: StoreProduct }) {
 
 export function ShopAll() {
   const [activeCategory, setActiveCategory] = useState("All");
+  const [searchParams] = useSearchParams();
   const [sortBy, setSortBy] = useState("featured");
   const [filterOpen, setFilterOpen] = useState(false);
   const [maxPrice, setMaxPrice] = useState("all");
+  const { products: catalog } = useApp();
+  useEffect(() => { setActiveCategory(searchParams.get("category") || "All"); }, [searchParams]);
   const products = useMemo(() => {
-    let next = [...storeProducts];
+    let next = catalog.filter((p) => p.status === "published" && p.showOnWebsite).map(toStoreProduct);
+    const featured = searchParams.get("featured");
+    if (featured === "new") next = next.filter(product => product.isNew);
+    if (featured === "bestseller") next = next.filter(product => product.isBestseller);
     if (activeCategory === "Pants & Leggings") next = next.filter((product) => product.category === "Bottoms" || product.name.includes("Trouser"));
     else if (activeCategory === "Skirts") next = next.filter((product) => product.name.includes("Skirt"));
     else if (activeCategory === "Stretch" || activeCategory === "Lounge") next = next.filter((product) => product.category === "Tops" || product.category === "Sets");
@@ -55,7 +63,7 @@ export function ShopAll() {
     if (sortBy === "price-high") next.sort((a, b) => b.price - a.price);
     if (sortBy === "name") next.sort((a, b) => a.name.localeCompare(b.name));
     return next;
-  }, [activeCategory, maxPrice, sortBy]);
+  }, [activeCategory, maxPrice, sortBy, catalog, searchParams]);
 
   return (
     <div className="store-page min-h-screen bg-white" style={{ fontFamily: "Inter, sans-serif" }}>

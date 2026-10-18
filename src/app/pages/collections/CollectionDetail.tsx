@@ -1,12 +1,12 @@
 import { useApp } from '../../context/AppContext';
 import { useParams, Link, useNavigate } from 'react-router';
 import { Button } from '../../components/ui/button';
-import { ArrowLeft, BookOpen } from 'lucide-react';
+import { ArrowLeft, BookOpen, Pencil, Trash2 } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 
 export function CollectionDetail() {
   const { id } = useParams();
-  const { collections, products } = useApp();
+  const { collections, products, deleteCollection } = useApp();
   const navigate = useNavigate();
 
   const collection = collections.find(c => c.id === id);
@@ -56,6 +56,7 @@ export function CollectionDetail() {
               {collection.description}
             </p>
             <div className="flex items-center gap-4">
+              <Button variant="outline" onClick={() => navigate(`/collections/${collection.id}/edit`)} className="rounded-none h-12 px-5"><Pencil className="w-4 h-4 mr-2" />Edit</Button>
               <Button
                 onClick={() => navigate('/lookbooks')}
                 className="bg-black text-white hover:bg-neutral-800 rounded-none h-12 px-6"
@@ -63,6 +64,7 @@ export function CollectionDetail() {
                 <BookOpen className="w-4 h-4 mr-2" />
                 Create Lookbook
               </Button>
+              <Button variant="outline" onClick={() => { if (window.confirm(`Delete ${collection.name}? Products will remain in the catalog without a collection.`)) { deleteCollection(collection.id); navigate('/collections'); } }} className="rounded-none h-12 px-5 text-red-700"><Trash2 className="w-4 h-4 mr-2" />Delete</Button>
               <p className="text-sm text-neutral-600">
                 {collectionProducts.length} products in this collection
               </p>

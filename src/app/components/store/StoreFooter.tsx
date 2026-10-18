@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { useState } from "react";
 import dairiLogo from "../../../imports/dairi-logo.svg";
+import { useApp } from "../../context/AppContext";
 
 const footerColumns = [
   {
@@ -20,11 +21,11 @@ const footerColumns = [
 export function StoreFooter() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const { subscribe, settings } = useApp();
 
   const handleSubscribe = () => {
-    if (!email.trim()) return;
-    setSubscribed(true);
-    setEmail("");
+    if (subscribe(email)) { setSubscribed(true); setEmail(""); }
+    else setSubscribed(false);
   };
 
   return (
@@ -37,7 +38,7 @@ export function StoreFooter() {
               aria-label="DAIRI home"
               className="block max-w-[52vw]"
             >
-              <img src={dairiLogo} alt="DAIRI" className="block h-auto w-[190px] brightness-0 invert" />
+              <img src={settings.logo || dairiLogo} alt={settings.brandName} className="block h-auto w-[190px] brightness-0 invert" />
             </Link>
           </div>
 
@@ -54,6 +55,7 @@ export function StoreFooter() {
               }}
               className="w-full bg-transparent border border-white/25 px-4 py-3 text-xs mb-3 text-white outline-none placeholder:text-white/35 focus:border-white"
               placeholder="Enter your email address"
+              type="email"
             />
             <p className="text-[11px] leading-5 mb-4 text-white/52">
               By signing up, you agree to our{" "}
@@ -75,7 +77,7 @@ export function StoreFooter() {
               <ul className="space-y-3">
                 {column.links.map((item) => (
                   <li key={item}>
-                    <Link to={item.includes("Policy") || item === "FAQ" ? "/store/support" : "/store/journal"} className="text-sm text-white/75 hover:text-white">
+                    <Link to={item === "Email Us" ? "mailto:care@dairifashion.com" : item.startsWith("+") ? "tel:+18443266000" : column.title === "Customers" || item.includes("Policy") || item === "FAQ" || item === "Terms" ? "/store/support" : "/store/journal"} className="text-sm text-white/75 hover:text-white">
                       {item}
                     </Link>
                   </li>
@@ -95,7 +97,7 @@ export function StoreFooter() {
         </div>
 
         <div className="mt-16 flex flex-col gap-4 border-t border-white/15 pt-8 text-xs text-white/42 md:flex-row md:items-center md:justify-between">
-          <p>©DAIRI</p>
+          <p>©{settings.brandName}</p>
           <div className="flex flex-wrap gap-5">
             <Link to="/store/support" className="hover:text-white">Privacy Policy</Link>
             <Link to="/store/support" className="hover:text-white">Terms</Link>

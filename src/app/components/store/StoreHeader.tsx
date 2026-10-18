@@ -3,31 +3,28 @@ import { Link } from "react-router";
 import { Heart, Menu, Search, ShoppingBag, Store, User, X } from "lucide-react";
 
 import dairiLogo from "../../../imports/dairi-logo.svg";
-import menuImage from "../../../imports/image-4.png";
-import modalImage from "../../../imports/image-2.png";
-import { storeProducts } from "../../data/storeProducts";
+import menuImage from "../../../imports/image-4.webp";
+import modalImage from "../../../imports/image-2.webp";
+import { toStoreProduct } from "../../data/storeProducts";
+import { useApp } from "../../context/AppContext";
 
 const CHARCOAL = "#111111";
 
 const navLinks = [
   { label: "Shop", href: "/store/shop" },
-  { label: "New Arrivals", href: "/store/shop" },
-  { label: "Sales", href: "/store/shop" },
+  { label: "New Arrivals", href: "/store/shop?featured=new" },
+  { label: "Collections", href: "/store/shop" },
   { label: "Journal", href: "/store/journal" },
 ];
 
-const menuColumns = [
+const menuColumnsBase = [
   {
     title: "Categories",
-    links: ["Bags", "Clothing", "Leather Goods", "Accessories", "Gifts", "Shop All"],
+    links: ["Sets", "Dresses", "Tops", "Outerwear", "Accessories", "Shop All"],
   },
   {
     title: "Featured",
-    links: ["New Arrivals", "Bestsellers", "Trending Now", "Loungewear"],
-  },
-  {
-    title: "Collections",
-    links: ["Party and events", "Office looks", "Selection", "Online Exclusive", "Knitwear", "Total Look", "Basics"],
+    links: ["New Arrivals", "Bestsellers"],
   },
 ];
 
@@ -36,25 +33,29 @@ export function StoreHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [newsletterOpen, setNewsletterOpen] = useState(false);
-  const [query, setQuery] = useState("pant");
+  const [query, setQuery] = useState("");
+  const { products: catalog, collections, cart, wishlist, subscribe, settings } = useApp();
+  const menuColumns = [...menuColumnsBase, { title: "Collections", links: collections.map(collection => collection.name) }];
+  const storeProducts = catalog.filter(p => p.status === "published" && p.showOnWebsite).map(toStoreProduct);
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterMessage, setNewsletterMessage] = useState("");
 
   const searchResults = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    const fallback = storeProducts.slice(0, 4);
-    if (!normalized) return fallback;
+    if (!normalized) return storeProducts.slice(0, 4);
 
     const matches = storeProducts.filter((product) =>
       `${product.name} ${product.category} ${product.description}`.toLowerCase().includes(normalized)
     );
-    return (matches.length ? matches : fallback).slice(0, 4);
-  }, [query]);
+    return matches.slice(0, 4);
+  }, [query, storeProducts]);
 
   return (
     <>
       <header className="store-header relative z-50 bg-white" style={{ color: CHARCOAL }}>
         <div className="h-8 bg-black flex items-center justify-center px-4">
           <p className="text-[10px] tracking-wide text-white/85 text-center">
-            Complimentary U.S. No-Rush Shipping on orders of $95 or more. Shop now
+            Complimentary shipping on orders of $95 or more. Shop now
           </p>
         </div>
 
@@ -65,7 +66,7 @@ export function StoreHeader() {
               className="relative block"
               aria-label="DAIRI home"
             >
-              <img src={dairiLogo} alt="DAIRI" className="block h-auto w-[92px]" />
+              <img src={settings.logo || dairiLogo} alt={settings.brandName} className="block h-auto w-[92px]" />
             </Link>
 
             <div className="hidden lg:flex items-center gap-8">
@@ -90,16 +91,16 @@ export function StoreHeader() {
               <Store size={15} />
               Stores
             </Link>
-            <button className="hover:opacity-60 transition-opacity store-button-motion" aria-label="Account" onClick={() => setNewsletterOpen(true)}>
+            <button className="hover:opacity-60 transition-opacity store-button-motion" aria-label="Private list" onClick={() => setNewsletterOpen(true)}>
               <User size={15} />
             </button>
             <Link to="/store/wishlist" className="flex items-center gap-1 hover:opacity-60 transition-opacity store-button-motion" aria-label="Wishlist">
               <Heart size={15} />
-              <span className="text-[12px]">0</span>
+              <span className="text-[12px]">{wishlist.length}</span>
             </Link>
             <Link to="/store/cart" className="flex items-center gap-1 hover:opacity-60 transition-opacity store-button-motion" aria-label="Shopping bag">
               <ShoppingBag size={15} />
-              <span className="text-[12px]">2</span>
+              <span className="text-[12px]">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
             </Link>
           </div>
 
@@ -119,7 +120,7 @@ export function StoreHeader() {
                   <p className="text-[12px] mb-7 text-black/45">{column.title}</p>
                   <div className="space-y-4">
                     {column.links.map((item) => (
-                      <Link key={item} to="/store/shop" className="block text-[15px] hover:opacity-60">
+                      <Link key={item} to={column.title === "Collections" ? `/store/collections/${collections.find(collection => collection.name === item)?.id}` : column.title === "Featured" ? `/store/shop?featured=${item === "New Arrivals" ? "new" : "bestseller"}` : item === "Shop All" ? "/store/shop" : `/store/shop?category=${encodeURIComponent(item)}`} className="block text-[15px] hover:opacity-60">
                         {item}
                       </Link>
                     ))}
@@ -174,7 +175,7 @@ export function StoreHeader() {
                 View all
               </Link>
             </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            {searchResults.length ? <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               {searchResults.map((product) => (
                 <Link key={product.id} to={`/store/products/${product.id}`} onClick={() => setSearchOpen(false)} className="group">
                   <div className="relative aspect-[4/5] bg-[#f6f6f6] overflow-hidden mb-4">
@@ -185,7 +186,7 @@ export function StoreHeader() {
                   <p className="text-sm mt-1">${product.price}</p>
                 </Link>
               ))}
-            </div>
+            </div> : <p className="py-12 text-center text-sm text-black/55">No pieces match “{query}”.</p>}
           </div>
         </div>
       )}
@@ -200,15 +201,16 @@ export function StoreHeader() {
               <img src={modalImage} alt="DAIRI newsletter" className="h-full w-full object-cover object-top" />
             </div>
             <div className="flex flex-col items-center justify-center text-center px-10 py-16">
-              <p className="text-sm mb-7">Enter your email to unlock</p>
-              <h2 className="text-3xl leading-tight mb-5">15% off your first order</h2>
+              <p className="text-sm mb-7">DAIRI PRIVATE LIST</p>
+              <h2 className="text-3xl leading-tight mb-5">Early access to the edit</h2>
               <p className="text-sm leading-6 mb-8 max-w-[320px]">
-                Plus, get insider access to promotions, launches, events, and more.
+                Join for collection notes, launches, and private studio updates.
               </p>
-              <input className="w-full border border-black/20 px-4 py-4 mb-4 text-sm" placeholder="Enter your email address" />
-              <button className="bg-black text-white px-8 py-4 text-sm" onClick={() => setNewsletterOpen(false)}>
+              <input type="email" required value={newsletterEmail} onChange={e=>setNewsletterEmail(e.target.value)} className="w-full border border-black/20 px-4 py-4 mb-4 text-sm" placeholder="Enter your email address" />
+              <button className="bg-black text-white px-8 py-4 text-sm" onClick={() => { if (subscribe(newsletterEmail)) { setNewsletterMessage("You’re on the list."); setNewsletterEmail(""); } else setNewsletterMessage("Enter a valid email address."); }}>
                 Unlock Access
               </button>
+              {newsletterMessage && <p role="status" className="text-xs mt-4">{newsletterMessage}</p>}
             </div>
           </div>
         </div>

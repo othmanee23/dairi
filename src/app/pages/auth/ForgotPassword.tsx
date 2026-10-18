@@ -13,7 +13,7 @@ export function ForgotPassword() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
-    toast.success('Password reset link sent to your email');
+    toast.info('Local demo mode does not send email. Connect an auth provider to enable password reset.');
   };
 
   return (
@@ -30,7 +30,7 @@ export function ForgotPassword() {
         <div className="mb-12">
           <h1 className="text-4xl mb-2 tracking-tight">Reset Password</h1>
           <p className="text-neutral-600">
-            Enter your email and we'll send you a reset link
+            Enter your email to check the reset flow
           </p>
         </div>
 
@@ -61,7 +61,7 @@ export function ForgotPassword() {
         ) : (
           <div className="p-8 bg-neutral-50 border border-neutral-200">
             <p className="text-neutral-600">
-              If an account exists with <strong>{email}</strong>, you will receive a password reset link shortly.
+              Local demo mode has no email service, so no reset link was sent to <strong>{email}</strong>. Configure an authentication provider to enable password recovery.
             </p>
           </div>
         )}

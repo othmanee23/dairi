@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { StoreFooter } from "../../components/store/StoreFooter";
 import { StoreHeader } from "../../components/store/StoreHeader";
+import { useApp } from "../../context/AppContext";
 
 const categories = [
   { label: "Delivery and order tracking", icon: Truck, active: true },
@@ -24,6 +25,11 @@ const questions = [
 export function Support() {
   const [activeCategory, setActiveCategory] = useState(categories[0].label);
   const [openQuestion, setOpenQuestion] = useState(questions[0]);
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [sent, setSent] = useState(false);
+  const { submitSupportRequest } = useApp();
+  const handleSubmit = (event: React.FormEvent) => { event.preventDefault(); submitSupportRequest(email, message); setSent(true); setEmail(""); setMessage(""); };
 
   return (
     <div className="store-page min-h-screen bg-white" style={{ fontFamily: "Inter, sans-serif" }}>
@@ -75,6 +81,13 @@ export function Support() {
                 </div>
               ))}
             </div>
+            <form onSubmit={handleSubmit} className="max-w-[820px] mt-16 border-t border-black/10 pt-8 space-y-4">
+              <h3 className="text-2xl">Contact the DAIRI team</h3>
+              <label className="block text-sm">Email address<input required type="email" value={email} onChange={e=>setEmail(e.target.value)} className="block w-full border border-black/20 p-3 mt-2"/></label>
+              <label className="block text-sm">How can we help?<textarea required minLength={8} value={message} onChange={e=>setMessage(e.target.value)} className="block w-full border border-black/20 p-3 mt-2 min-h-32"/></label>
+              <button className="bg-black text-white px-6 py-3 text-sm">Send request</button>
+              {sent && <p role="status" className="text-sm">Your request is saved. The studio will follow up at your email.</p>}
+            </form>
           </section>
         </div>
       </main>
