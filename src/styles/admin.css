@@ -474,6 +474,8 @@
 .dairi-template-products {
   align-content: space-between;
   display: grid;
+  margin-left: -10mm;
+  margin-right: -10mm;
   flex: 1 1 auto;
   gap: 6mm 8mm;
   grid-template-columns: repeat(3, minmax(0, 1fr));
