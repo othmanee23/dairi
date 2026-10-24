@@ -6,7 +6,7 @@ import { useApp } from "../../context/AppContext";
 const footerColumns = [
   {
     title: "Contact Us",
-    links: ["+1 (844) 326-6000", "Email Us", "Mon-Fri 9am-3pm PT"],
+    links: ["Contact Form"],
   },
   {
     title: "Customers",
@@ -14,18 +14,22 @@ const footerColumns = [
   },
   {
     title: "Company",
-    links: ["About Us", "Sustainability", "Discover Revive", "Careers", "Privacy Policy", "Terms"],
+    links: ["About Us", "Sustainability", "Wholesale", "Discover Revive", "Careers", "Privacy Policy", "Terms"],
   },
 ];
 
 export function StoreFooter() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [subscribeError, setSubscribeError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const { subscribe, settings } = useApp();
 
-  const handleSubscribe = () => {
-    if (subscribe(email)) { setSubscribed(true); setEmail(""); }
-    else setSubscribed(false);
+  const handleSubscribe = async () => {
+    setSubmitting(true); setSubscribeError("");
+    try { await subscribe(email); setSubscribed(true); setEmail(""); }
+    catch (error) { setSubscribed(false); setSubscribeError(error instanceof Error ? error.message : "Could not subscribe. Please try again."); }
+    finally { setSubmitting(false); }
   };
 
   return (
@@ -63,10 +67,11 @@ export function StoreFooter() {
               and{" "}
               <Link to="/store/support" className="underline underline-offset-2 hover:text-white">Terms of Service</Link>.
             </p>
-            <button className="store-button-motion bg-white text-black px-5 py-2.5 text-xs font-medium hover:bg-[#d9d2c8]" onClick={handleSubscribe}>Subscribe</button>
+            <button disabled={submitting} className="store-button-motion bg-white text-black px-5 py-2.5 text-xs font-medium hover:bg-[#d9d2c8] disabled:opacity-50" onClick={handleSubscribe}>{submitting ? "Subscribing…" : "Subscribe"}</button>
             {subscribed && (
               <p className="text-xs mt-4 text-white/60">Thank you. You are on the list.</p>
             )}
+            {subscribeError && <p role="alert" className="text-xs mt-4 text-red-300">{subscribeError}</p>}
           </div>
         </div>
 
@@ -77,7 +82,7 @@ export function StoreFooter() {
               <ul className="space-y-3">
                 {column.links.map((item) => (
                   <li key={item}>
-                    <Link to={item === "Email Us" ? "mailto:care@dairifashion.com" : item.startsWith("+") ? "tel:+18443266000" : column.title === "Customers" || item.includes("Policy") || item === "FAQ" || item === "Terms" ? "/store/support" : "/store/journal"} className="text-sm text-white/75 hover:text-white">
+                    <Link to={item === "Wholesale" ? "/store/wholesale" : item === "Contact Form" || column.title === "Customers" || item.includes("Policy") || item === "FAQ" || item === "Terms" ? "/store/support" : "/store/journal"} className="text-sm text-white/75 hover:text-white">
                       {item}
                     </Link>
                   </li>
@@ -87,11 +92,7 @@ export function StoreFooter() {
           ))}
           <div className="lg:text-right">
             <p className="text-sm leading-7 text-white/60">
-              850 S Broadway, Los Angeles
-              <br />
-              care@dairifashion.com
-              <br />
-              Mon-Fri 9am-3pm PT
+              {settings.email && <a href={`mailto:${settings.email}`} className="hover:text-white">{settings.email}</a>}
             </p>
           </div>
         </div>

@@ -3,10 +3,12 @@ import { Link, useParams } from "react-router";
 import { StoreFooter } from "../../components/store/StoreFooter";
 import { StoreHeader } from "../../components/store/StoreHeader";
 import { journalPosts } from "../../data/journal";
+import { usePageSeo } from "../../lib/seo";
 
 export function JournalArticle() {
   const { id } = useParams();
   const article = journalPosts.find((post) => post.id === id) ?? journalPosts[0];
+  usePageSeo({ title: `${article.title} | DAIRI Journal`, description: `${article.title} — notes from the DAIRI studio on fashion, materials, and considered design.`, path: `/store/journal/${article.id}`, image: article.image });
   const latest = journalPosts.filter((post) => post.id !== article.id).slice(0, 4);
 
   return (

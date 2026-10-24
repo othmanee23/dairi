@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -9,14 +9,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../../components/ui/select';
-import { Upload, Save } from 'lucide-react';
+import { Upload, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '../../context/AppContext';
 import { readOptimizedImage } from '../../utils/image';
+import { supabase } from '../../lib/supabase';
 import defaultProductImage from '../../../imports/image-1.webp';
 
+type CommerceZone = { id: string; country_code: string; region_code: string; shipping_amount: number | null; free_shipping_threshold: number | null; tax_rate: number | null; tax_shipping: boolean; active: boolean };
+type DiscountCode = { id: string; code: string; discount_type: 'percentage'|'fixed'; amount: number; minimum_subtotal: number; starts_at: string | null; expires_at: string | null; max_redemptions: number | null; redemption_count: number; applies_to: 'retail'|'wholesale'|'all'; active: boolean };
+
 export function Settings() {
-  const { settings, updateSettings, addProduct } = useApp();
+  const { settings, updateSettings, addProduct, changePassword } = useApp();
   const [brandName, setBrandName] = useState(settings.brandName);
   const [logo, setLogo] = useState(settings.logo);
   const [primaryColor, setPrimaryColor] = useState(settings.primaryColor);
@@ -26,11 +30,89 @@ export function Settings() {
   const [defaultLayout, setDefaultLayout] = useState(settings.defaultLayout);
   const [email, setEmail] = useState(settings.email);
   const [name, setName] = useState(settings.name);
+  const [commerceZones, setCommerceZones] = useState<CommerceZone[]>([]);
+  const [zoneCountry, setZoneCountry] = useState(''); const [zoneRegion, setZoneRegion] = useState('');
+  const [zoneShipping, setZoneShipping] = useState(''); const [zoneFreeThreshold, setZoneFreeThreshold] = useState(''); const [zoneTaxRate, setZoneTaxRate] = useState('');
+  const [zoneTaxShipping, setZoneTaxShipping] = useState(false); const [savingZone, setSavingZone] = useState(false);
+  const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
+  const [discountCode, setDiscountCode] = useState(''); const [discountType, setDiscountType] = useState<'percentage'|'fixed'>('percentage');
+  const [discountAmount, setDiscountAmount] = useState(''); const [discountMinimum, setDiscountMinimum] = useState('0');
+  const [discountMaxUses, setDiscountMaxUses] = useState(''); const [discountStarts, setDiscountStarts] = useState(''); const [discountExpires, setDiscountExpires] = useState('');
+  const [discountAppliesTo, setDiscountAppliesTo] = useState<'retail'|'wholesale'|'all'>('retail'); const [savingDiscount, setSavingDiscount] = useState(false);
+  const [passwordFormOpen, setPasswordFormOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState(''); const [confirmPassword, setConfirmPassword] = useState(''); const [savingPassword, setSavingPassword] = useState(false);
   useEffect(() => { setBrandName(settings.brandName); setLogo(settings.logo); setPrimaryColor(settings.primaryColor); setSecondaryColor(settings.secondaryColor); setFontFamily(settings.fontFamily); setDefaultFormat(settings.defaultFormat); setDefaultLayout(settings.defaultLayout); setEmail(settings.email); setName(settings.name); }, [settings]);
+  useEffect(() => { if (!supabase) return; let active = true; void supabase.from('commerce_zones').select('*').order('country_code').order('region_code').then(({ data, error }) => { if (!active) return; if (error) toast.error(`Could not load shipping and tax rules: ${error.message}`); else setCommerceZones((data ?? []) as CommerceZone[]); }); return () => { active = false; }; }, []);
+  useEffect(() => { if (!supabase) return; let active = true; void supabase.from('discount_codes').select('*').order('created_at', { ascending: false }).then(({ data, error }) => { if (!active) return; if (error) toast.error(`Could not load discount codes: ${error.message}`); else setDiscountCodes((data ?? []) as DiscountCode[]); }); return () => { active = false; }; }, []);
 
-  const handleSave = () => {
-    updateSettings({ brandName, logo, primaryColor, secondaryColor, fontFamily, defaultFormat: defaultFormat as typeof settings.defaultFormat, defaultLayout: defaultLayout as typeof settings.defaultLayout, email, name });
-    toast.success('Settings saved successfully');
+  const saveCommerceZone = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!supabase) { toast.error('Supabase is not configured'); return; }
+    if (!/^[A-Za-z]{2}$/.test(zoneCountry)) { toast.error('Enter a two-letter ISO country code'); return; }
+    if ((zoneShipping && (!Number.isFinite(Number(zoneShipping)) || Number(zoneShipping) < 0)) || (zoneFreeThreshold && (!Number.isFinite(Number(zoneFreeThreshold)) || Number(zoneFreeThreshold) < 0)) || (zoneTaxRate && (!Number.isFinite(Number(zoneTaxRate)) || Number(zoneTaxRate) < 0 || Number(zoneTaxRate) > 100))) { toast.error('Enter valid non-negative amounts and a tax rate from 0 to 100'); return; }
+    setSavingZone(true);
+    const row = { country_code: zoneCountry.toUpperCase(), region_code: zoneRegion.trim().toUpperCase(), shipping_amount: zoneShipping === '' ? null : Number(zoneShipping), free_shipping_threshold: zoneFreeThreshold === '' ? null : Number(zoneFreeThreshold), tax_rate: zoneTaxRate === '' ? null : Number(zoneTaxRate), tax_shipping: zoneTaxShipping, active: true };
+    const { data, error } = await supabase.from('commerce_zones').upsert(row, { onConflict: 'country_code,region_code' }).select('*').single();
+    setSavingZone(false);
+    if (error) { toast.error(`Could not save rule: ${error.message}`); return; }
+    setCommerceZones(current => [...current.filter(zone => zone.id !== data.id && !(zone.country_code === data.country_code && zone.region_code === data.region_code)), data as CommerceZone]);
+    setZoneCountry(''); setZoneRegion(''); setZoneShipping(''); setZoneFreeThreshold(''); setZoneTaxRate(''); setZoneTaxShipping(false);
+    toast.success('Destination rule saved');
+  };
+
+  const deleteCommerceZone = async (id: string) => {
+    if (!supabase) return;
+    const { error } = await supabase.from('commerce_zones').delete().eq('id', id);
+    if (error) toast.error(`Could not remove rule: ${error.message}`);
+    else setCommerceZones(current => current.filter(zone => zone.id !== id));
+  };
+
+  const createDiscountCode = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!supabase) { toast.error('Supabase is not configured'); return; }
+    const code = discountCode.trim().toUpperCase();
+    const amount = Number(discountAmount); const minimum = Number(discountMinimum || 0); const maximum = discountMaxUses ? Number(discountMaxUses) : null;
+    if (!/^[A-Z0-9][A-Z0-9_-]{2,39}$/.test(code)) { toast.error('Use 3–40 letters, numbers, hyphens, or underscores for the code'); return; }
+    if (!Number.isFinite(amount) || amount <= 0 || (discountType === 'percentage' && amount > 100) || !Number.isFinite(minimum) || minimum < 0 || (maximum != null && (!Number.isInteger(maximum) || maximum < 1))) { toast.error('Check the discount amount, minimum, and redemption limit'); return; }
+    const startsAt = discountStarts ? new Date(discountStarts).toISOString() : null; const expiresAt = discountExpires ? new Date(discountExpires).toISOString() : null;
+    if (startsAt && expiresAt && new Date(expiresAt) <= new Date(startsAt)) { toast.error('Expiration must be after the start date'); return; }
+    setSavingDiscount(true);
+    const { data, error } = await supabase.from('discount_codes').insert({ code, discount_type: discountType, amount, minimum_subtotal: minimum, max_redemptions: maximum, starts_at: startsAt, expires_at: expiresAt, applies_to: discountAppliesTo }).select('*').single();
+    setSavingDiscount(false);
+    if (error) { toast.error(error.code === '23505' ? 'That discount code already exists' : `Could not create discount code: ${error.message}`); return; }
+    setDiscountCodes(current => [data as DiscountCode, ...current]); setDiscountCode(''); setDiscountAmount(''); setDiscountMinimum('0'); setDiscountMaxUses(''); setDiscountStarts(''); setDiscountExpires('');
+    toast.success('Discount code created');
+  };
+
+  const toggleDiscountCode = async (discount: DiscountCode) => {
+    if (!supabase) return;
+    const { error } = await supabase.from('discount_codes').update({ active: !discount.active }).eq('id', discount.id);
+    if (error) toast.error(`Could not update code: ${error.message}`);
+    else setDiscountCodes(current => current.map(code => code.id === discount.id ? { ...code, active: !code.active } : code));
+  };
+
+  const handleSave = async () => {
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { toast.error('Enter a valid studio contact email address'); return; }
+    try {
+      await updateSettings({ brandName, logo, primaryColor, secondaryColor, fontFamily, defaultFormat: defaultFormat as typeof settings.defaultFormat, defaultLayout: defaultLayout as typeof settings.defaultLayout, email: email.trim(), name });
+      toast.success('Settings saved successfully');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save settings');
+    }
+  };
+
+  const handlePasswordChange = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (newPassword.length < 8 || newPassword.length > 72) { toast.error('Use a password between 8 and 72 characters'); return; }
+    if (newPassword !== confirmPassword) { toast.error('The passwords do not match'); return; }
+    setSavingPassword(true);
+    try {
+      await changePassword(newPassword);
+      setNewPassword(''); setConfirmPassword(''); setPasswordFormOpen(false);
+      toast.success('Password updated');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not update password');
+    } finally { setSavingPassword(false); }
   };
 
   const handleCsvImport = async (file?: File) => {
@@ -48,7 +130,13 @@ export function Settings() {
       return { id: `import-${Date.now().toString(36)}-${index}`, name, price, category: get('category') || 'Sets', collection: get('collection') || 'DAIRI Edit', description: get('description'), tags: get('tags').split(/[;,]/).map(tag=>tag.trim()).filter(Boolean), status, showOnWebsite: status === 'published', images: image ? [image] : [defaultProductImage], createdAt: new Date().toISOString().slice(0,10) };
     }).filter((row): row is NonNullable<typeof row> => Boolean(row));
     if (!imported.length) { toast.error('No valid products found. Include Name and Price columns.'); return; }
-    imported.forEach(addProduct); toast.success(`${imported.length} products imported`);
+    let saved = 0;
+    try {
+      for (const product of imported) { await addProduct(product); saved += 1; }
+      toast.success(`${saved} products imported`);
+    } catch (error) {
+      toast.error(`${saved} of ${imported.length} products imported. ${error instanceof Error ? error.message : 'Import stopped.'}`);
+    }
   };
 
   return (
@@ -211,6 +299,46 @@ export function Settings() {
             </div>
           </section>
 
+          {/* Destination-based shipping and tax estimates */}
+          <section>
+            <h2 className="text-xl mb-2 tracking-tight">Shipping &amp; Tax Rules</h2>
+            <p className="text-sm text-neutral-600 mb-6">Rates are manually configured by destination. Use ISO 3166-1 alpha-2 country codes (for example US or MA). Leave a rate blank when the studio must confirm it. Enter 0 to explicitly configure a zero rate.</p>
+            <div className="admin-panel p-6 space-y-6">
+              <form onSubmit={saveCommerceZone} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="text-sm">Country code<Input required maxLength={2} value={zoneCountry} onChange={event => setZoneCountry(event.target.value.toUpperCase())} placeholder="US" className="mt-2 h-11 rounded-none" /></label>
+                <label className="text-sm">Region code (blank applies to the whole country)<Input value={zoneRegion} onChange={event => setZoneRegion(event.target.value.toUpperCase())} placeholder="CA, NY, etc." className="mt-2 h-11 rounded-none" /></label>
+                <label className="text-sm">Flat shipping in USD<Input type="number" min="0" step="0.01" value={zoneShipping} onChange={event => setZoneShipping(event.target.value)} placeholder="Blank = studio quote" className="mt-2 h-11 rounded-none" /></label>
+                <label className="text-sm">Free shipping minimum in USD<Input type="number" min="0" step="0.01" value={zoneFreeThreshold} onChange={event => setZoneFreeThreshold(event.target.value)} placeholder="Optional" className="mt-2 h-11 rounded-none" /></label>
+                <label className="text-sm">Tax rate (%)<Input type="number" min="0" max="100" step="0.0001" value={zoneTaxRate} onChange={event => setZoneTaxRate(event.target.value)} placeholder="Blank = studio confirms" className="mt-2 h-11 rounded-none" /></label>
+                <label className="flex items-center gap-3 text-sm pt-6"><input type="checkbox" checked={zoneTaxShipping} onChange={event => setZoneTaxShipping(event.target.checked)} />Include shipping in the tax basis</label>
+                <div className="md:col-span-2"><Button type="submit" disabled={savingZone} className="bg-black text-white rounded-none h-11 px-6">{savingZone ? 'Saving…' : 'Save destination rule'}</Button></div>
+              </form>
+              {commerceZones.length ? <div className="divide-y border-t border-neutral-200">{commerceZones.map(zone => <div key={zone.id} className="flex flex-wrap items-center justify-between gap-4 py-4 text-sm"><div><p className="font-medium">{zone.country_code}{zone.region_code ? ` · ${zone.region_code}` : ' · all regions'}</p><p className="mt-1 text-xs text-neutral-600">Shipping: {zone.shipping_amount == null ? 'studio quote' : `$${Number(zone.shipping_amount).toFixed(2)}${zone.free_shipping_threshold == null ? '' : ` · free over $${Number(zone.free_shipping_threshold).toFixed(2)}`}`} · Tax: {zone.tax_rate == null ? 'studio confirmation' : `${Number(zone.tax_rate)}%`}{zone.tax_shipping ? ' (shipping taxable)' : ''}</p></div><button type="button" onClick={() => void deleteCommerceZone(zone.id)} aria-label={`Delete ${zone.country_code} ${zone.region_code} destination rule`} className="p-2 text-neutral-600 hover:text-red-700"><Trash2 className="w-4 h-4" /></button></div>)}</div> : <p className="border-t pt-4 text-sm text-neutral-500">No destination rules configured. Checkout will request a studio quote.</p>}
+              <p className="text-xs text-neutral-500">These are manual estimates, not carrier quotes or tax advice. The server recalculates and snapshots charges when an unpaid order is created. Add more specific region rules to override country-wide rules.</p>
+            </div>
+          </section>
+
+          {/* Required client brief feature: customer discount codes */}
+          <section>
+            <h2 className="text-xl mb-2 tracking-tight">Discount Codes</h2>
+            <p className="text-sm text-neutral-600 mb-6">Codes are validated and redeemed by the server when an unpaid order is placed. Discounts reduce the taxable merchandise amount.</p>
+            <div className="admin-panel p-6 space-y-6">
+              <form onSubmit={createDiscountCode} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="text-sm">Code<Input required maxLength={40} value={discountCode} onChange={event => setDiscountCode(event.target.value.toUpperCase())} placeholder="WELCOME10" className="mt-2 h-11 rounded-none" /></label>
+                <label className="text-sm">Discount type<select value={discountType} onChange={event => setDiscountType(event.target.value as 'percentage'|'fixed')} className="mt-2 h-11 w-full border border-neutral-300 bg-white px-3"><option value="percentage">Percentage</option><option value="fixed">Fixed amount (USD)</option></select></label>
+                <label className="text-sm">Amount{discountType === 'percentage' ? ' (%)' : ' (USD)'}<Input required type="number" min="0.01" max={discountType === 'percentage' ? 100 : undefined} step="0.01" value={discountAmount} onChange={event => setDiscountAmount(event.target.value)} className="mt-2 h-11 rounded-none" /></label>
+                <label className="text-sm">Minimum merchandise subtotal (USD)<Input type="number" min="0" step="0.01" value={discountMinimum} onChange={event => setDiscountMinimum(event.target.value)} className="mt-2 h-11 rounded-none" /></label>
+                <label className="text-sm">Maximum redemptions (blank = unlimited)<Input type="number" min="1" step="1" value={discountMaxUses} onChange={event => setDiscountMaxUses(event.target.value)} className="mt-2 h-11 rounded-none" /></label>
+                <label className="text-sm">Applies to<select value={discountAppliesTo} onChange={event => setDiscountAppliesTo(event.target.value as 'retail'|'wholesale'|'all')} className="mt-2 h-11 w-full border border-neutral-300 bg-white px-3"><option value="retail">Retail customers</option><option value="wholesale">Approved wholesale customers</option><option value="all">Retail and wholesale</option></select></label>
+                <label className="text-sm">Starts at (optional)<Input type="datetime-local" value={discountStarts} onChange={event => setDiscountStarts(event.target.value)} className="mt-2 h-11 rounded-none" /></label>
+                <label className="text-sm">Expires at (optional)<Input type="datetime-local" value={discountExpires} onChange={event => setDiscountExpires(event.target.value)} className="mt-2 h-11 rounded-none" /></label>
+                <div className="md:col-span-2"><Button type="submit" disabled={savingDiscount} className="bg-black text-white rounded-none h-11 px-6">{savingDiscount ? 'Creating…' : 'Create discount code'}</Button></div>
+              </form>
+              {discountCodes.length ? <div className="divide-y border-t border-neutral-200">{discountCodes.map(code => <div key={code.id} className="flex flex-wrap items-center justify-between gap-4 py-4 text-sm"><div><p className="font-medium">{code.code} <span className="font-normal text-neutral-600">· {code.discount_type === 'percentage' ? `${Number(code.amount)}% off` : `$${Number(code.amount).toFixed(2)} off`}</span></p><p className="mt-1 text-xs text-neutral-600">{code.applies_to} · redeemed {code.redemption_count}{code.max_redemptions == null ? '' : ` / ${code.max_redemptions}`} · minimum ${Number(code.minimum_subtotal).toFixed(2)}{code.expires_at ? ` · expires ${new Date(code.expires_at).toLocaleString()}` : ''}</p></div><button type="button" onClick={() => void toggleDiscountCode(code)} className={`border px-3 py-2 text-xs ${code.active ? 'border-emerald-700 text-emerald-800' : 'border-neutral-400 text-neutral-600'}`}>{code.active ? 'Active · deactivate' : 'Inactive · activate'}</button></div>)}</div> : <p className="border-t pt-4 text-sm text-neutral-500">No discount codes created yet.</p>}
+              <p className="text-xs text-neutral-500">Codes never collect payment. The usage counter increments only when an unpaid order successfully commits; failed orders do not consume a redemption.</p>
+            </div>
+          </section>
+
           {/* Account Settings */}
           <section>
             <h2 className="text-xl mb-6 tracking-tight">Account</h2>
@@ -228,9 +356,10 @@ export function Settings() {
                 </div>
                 <div>
                   <Label className="text-sm uppercase tracking-wider text-neutral-600 mb-2 block">
-                    Email
+                    Studio contact email
                   </Label>
                   <Input
+                    type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="h-12 border-neutral-300 rounded-none"
@@ -242,13 +371,14 @@ export function Settings() {
                 <Label className="text-sm uppercase tracking-wider text-neutral-600 mb-2 block">
                   Password
                 </Label>
-                <Button
-                  variant="outline"
-                  className="border-neutral-300 rounded-none h-12 px-6"
-                  onClick={() => toast.info('Password changes require a connected authentication provider.')}
-                >
-                  Change Password
-                </Button>
+                {passwordFormOpen ? <form onSubmit={handlePasswordChange} className="max-w-md space-y-3">
+                  <Input type="password" required minLength={8} maxLength={72} autoComplete="new-password" aria-label="New password" placeholder="New password" value={newPassword} onChange={event => setNewPassword(event.target.value)} className="h-12 border-neutral-300 rounded-none" />
+                  <Input type="password" required minLength={8} maxLength={72} autoComplete="new-password" aria-label="Confirm new password" placeholder="Confirm new password" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} className="h-12 border-neutral-300 rounded-none" />
+                  <div className="flex gap-3">
+                    <Button type="submit" disabled={savingPassword} className="bg-black text-white rounded-none h-11 px-5">{savingPassword ? 'Updating…' : 'Update password'}</Button>
+                    <Button type="button" variant="outline" disabled={savingPassword} onClick={() => { setPasswordFormOpen(false); setNewPassword(''); setConfirmPassword(''); }} className="border-neutral-300 rounded-none h-11 px-5">Cancel</Button>
+                  </div>
+                </form> : <Button type="button" variant="outline" className="border-neutral-300 rounded-none h-12 px-6" onClick={() => setPasswordFormOpen(true)}>Change Password</Button>}
               </div>
             </div>
           </section>

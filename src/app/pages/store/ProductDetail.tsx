@@ -1,13 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
 import { ChevronDown, Heart } from "lucide-react";
 
 import { StoreFooter } from "../../components/store/StoreFooter";
 import { StoreHeader } from "../../components/store/StoreHeader";
-import { StoreProduct, toStoreProduct } from "../../data/storeProducts";
+import { StoreProduct, withCustomerPrice, customerPriceLabel, customerUnitPrice } from "../../data/storeProducts";
 import { useApp } from "../../context/AppContext";
+import { usePageSeo } from "../../lib/seo";
+import { ProductVariant } from "../../types";
 
-function MiniProduct({ product }: { product: StoreProduct }) {
+function MiniProduct({ product, wholesale }: { product: StoreProduct; wholesale: boolean }) {
   return (
     <Link to={`/store/products/${product.id}`} className="store-card group block">
       <div className="relative aspect-[4/5] bg-[#f6f6f6] overflow-hidden mb-3">
@@ -15,7 +17,7 @@ function MiniProduct({ product }: { product: StoreProduct }) {
         <span className="absolute right-3 bottom-2 text-xl">+</span>
       </div>
       <p className="text-xs leading-snug">{product.name}</p>
-      <p className="text-xs mt-1">${product.price}</p>
+      <p className="text-xs mt-1">{customerPriceLabel(product, wholesale)}</p>
     </Link>
   );
 }
@@ -35,19 +37,50 @@ function AccordionRow({ label, children }: { label: string; children: React.Reac
 
 export function ProductDetail() {
   const { id } = useParams();
-  const { products: catalog, wishlist, toggleWishlist, addToCart } = useApp();
+  const { products: catalog, wishlist, toggleWishlist, addToCart, customerAccount } = useApp();
+  const wholesale = customerAccount?.wholesaleStatus === 'approved';
   const product = catalog.find((item) => item.id === id && item.status === "published" && item.showOnWebsite);
-  const storeProduct = product ? toStoreProduct(product) : undefined;
+  const storeProduct = product ? withCustomerPrice(product, wholesale) : undefined;
+  const retailPrices = product?.variants?.filter(variant => variant.isActive).map(variant => variant.retailPrice ?? product.price) ?? (product ? [product.price] : []);
+  const productStructuredData = product && !wholesale ? {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: product.description,
+    ...(product.styleNumber ? { sku: product.styleNumber } : {}),
+    image: product.images.map(image => new URL(image, window.location.origin).toString()),
+    brand: { '@type': 'Brand', name: 'DAIRI' },
+    offers: {
+      '@type': retailPrices.length > 1 ? 'AggregateOffer' : 'Offer',
+      priceCurrency: 'USD',
+      ...(retailPrices.length > 1 ? { lowPrice: Math.min(...retailPrices).toFixed(2), highPrice: Math.max(...retailPrices).toFixed(2), offerCount: retailPrices.length } : { price: (retailPrices[0] ?? product.price).toFixed(2) }),
+      availability: product.variants?.some(variant => variant.isActive && variant.inventoryQuantity > 0) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+    },
+  } : undefined;
+  usePageSeo({ title: product ? `${product.name}${product.styleNumber ? ` · ${product.styleNumber}` : ''} | DAIRI` : 'Product | DAIRI', description: product?.description || 'Explore the latest DAIRI women’s fashion pieces and product details.', path: `/store/products/${id ?? ''}`, image: storeProduct?.image, structuredData: productStructuredData });
   const [selectedSize, setSelectedSize] = useState(storeProduct?.sizes[0] ?? "");
+  const [selectedColor, setSelectedColor] = useState(storeProduct?.color ?? "");
   const [added, setAdded] = useState(false);
   const [sizeChartOpen, setSizeChartOpen] = useState(false);
 
+  const variants: ProductVariant[] = (product?.variants ?? []).filter((variant): variant is ProductVariant => Boolean(variant?.isActive));
+  const colors = [...new Map<string, ProductVariant>(variants.map(variant => [variant.color, variant])).values()];
+  const colorVariants = variants.filter(variant => variant.color === selectedColor);
+  const selectedVariant = colorVariants.find(variant => variant.size === selectedSize);
+  const selectedPrice = product && selectedVariant ? customerUnitPrice(product, selectedVariant.id, wholesale) : null;
+  useEffect(() => {
+    if (!product) return;
+    const firstVariant = product.variants?.find(variant => variant.isActive);
+    setSelectedColor(firstVariant?.color ?? product.color ?? "");
+    setSelectedSize(firstVariant?.size ?? product.sizes?.[0] ?? "");
+  }, [product?.id]);
+
   const related = useMemo(() => {
     if (!storeProduct) return [];
-    return catalog.filter((item) => item.id !== storeProduct.id && item.status === "published" && item.showOnWebsite).map(toStoreProduct).slice(0, 3);
-  }, [storeProduct, catalog]);
+    return catalog.filter((item) => item.id !== storeProduct.id && item.status === "published" && item.showOnWebsite).map(item => withCustomerPrice(item, wholesale)).slice(0, 3);
+  }, [storeProduct, catalog, wholesale]);
 
-  const recentlyViewed = catalog.filter((item) => item.status === "published" && item.showOnWebsite).map(toStoreProduct).slice(0, 3);
+  const recentlyViewed = catalog.filter((item) => item.status === "published" && item.showOnWebsite).map(item => withCustomerPrice(item, wholesale)).slice(0, 3);
 
   if (!product) {
     return (
@@ -88,13 +121,15 @@ export function ProductDetail() {
           <aside className="lg:sticky lg:top-8 self-start">
             <p className="text-xs text-black/50 mb-4">Shop / {product.category}</p>
             <h1 className="text-xl font-semibold leading-snug mb-2">{product.name}</h1>
-            <p className="text-sm mb-8">${product.price}</p>
+            {product.styleNumber && <p className="text-xs text-black/45 mb-3">Style {product.styleNumber}</p>}
+            <p className="text-sm mb-3">{selectedVariant ? selectedPrice == null ? 'Wholesale price not set for this option' : `$${selectedPrice.toFixed(2)}` : wholesale ? customerPriceLabel(storeProduct, true) : `$${product.price.toFixed(2)}`}</p>
+            {wholesale && <p className="text-[10px] uppercase tracking-[1px] text-black/45 mb-6">Approved wholesale account pricing</p>}
             <p className="text-sm leading-6 mb-6">{product.description}</p>
 
             <div className="mb-6">
-              <p className="text-sm font-medium mb-3">Product Color: {storeProduct.color}</p>
+              <p className="text-sm font-medium mb-3">Product Color: {selectedColor || "Standard"}</p>
               <div className="flex gap-3">
-                <span className="w-5 h-5 rounded-full border border-black/20" style={{ background: storeProduct.colorHex }} />
+                {colors.length ? colors.map(color => <button type="button" key={color.color} aria-label={`Select ${color.color || "standard"} color`} aria-pressed={selectedColor === color.color} onClick={() => { setSelectedColor(color.color); setSelectedSize(colorVariants.find(variant => variant.color === color.color)?.size ?? variants.find(variant => variant.color === color.color)?.size ?? ""); }} className="w-7 h-7 rounded-full border border-black/30 ring-offset-2 aria-pressed:ring-1" style={{ background: color.colorHex ?? "#eee" }} />) : <span className="w-5 h-5 rounded-full border border-black/20" style={{ background: storeProduct.colorHex }} />}
               </div>
             </div>
 
@@ -104,11 +139,16 @@ export function ProductDetail() {
                 <button className="text-xs underline underline-offset-2" onClick={() => setSizeChartOpen(true)}>Size Chart</button>
               </div>
               <div className="flex flex-wrap gap-2">
-                {storeProduct.sizes.map((size) => (
+                {(variants.length ? [...new Set(colorVariants.map(variant => variant.size))] : storeProduct.sizes).map((size) => {
+                  const sizeVariant = colorVariants.find(variant => variant.size === size);
+                  const soldOut = variants.length > 0 && (!sizeVariant || sizeVariant.inventoryQuantity < 1);
+                  return (
                   <button
+                    type="button"
                     key={size}
                     onClick={() => setSelectedSize(size)}
-                    className="store-button-motion w-10 h-9 border text-xs"
+                    disabled={soldOut}
+                    className="store-button-motion min-w-10 h-9 border px-2 text-xs disabled:opacity-35 disabled:line-through"
                     style={{
                       background: selectedSize === size ? "#111" : "white",
                       color: selectedSize === size ? "white" : "#111",
@@ -117,22 +157,24 @@ export function ProductDetail() {
                   >
                     {size}
                   </button>
-                ))}
+                );})}
               </div>
+              {selectedVariant && <p className="text-xs text-black/50 mt-3">{selectedVariant.inventoryQuantity > 0 ? `${selectedVariant.inventoryQuantity} in stock` : "Sold out"}</p>}
             </div>
 
             {sizeChartOpen && <div role="dialog" aria-modal="true" aria-label="Size guide" className="fixed inset-0 z-[90] bg-black/45 flex items-center justify-center p-6"><div className="bg-white p-7 max-w-md w-full"><div className="flex items-center justify-between mb-5"><h2 className="text-xl">DAIRI size guide</h2><button onClick={() => setSizeChartOpen(false)} aria-label="Close size guide">×</button></div><p className="text-sm text-black/65 leading-6 mb-5">Choose your usual size for a close fit. For an easier drape, size up. Measurements are a guide and may vary by silhouette.</p><div className="grid grid-cols-3 text-sm border-t border-l">{[["Size","Bust","Waist"],["XS","32–33 in","24–25 in"],["S","34–35 in","26–27 in"],["M","36–37 in","28–29 in"],["L","38–40 in","30–32 in"],["XL","41–43 in","33–35 in"]].flat().map((cell,index)=><div key={index} className={`p-3 border-r border-b ${index<3?'font-medium bg-neutral-50':''}`}>{cell}</div>)}</div></div></div>}
 
             <button
               className="store-button-motion w-full bg-black text-white py-3.5 text-sm mb-3"
+              disabled={!selectedVariant || selectedVariant.inventoryQuantity < 1 || selectedPrice == null}
               onClick={() => {
-                if (!selectedSize) return;
-                addToCart(product.id, selectedSize);
+                if (!selectedVariant || selectedVariant.inventoryQuantity < 1) return;
+                addToCart(product.id, selectedVariant.id, selectedVariant.size, selectedVariant.color);
                 setAdded(true);
                 window.setTimeout(() => setAdded(false), 2200);
               }}
             >
-              {added ? "Added To Bag" : "Add To Bag"}
+              {added ? "Added To Bag" : wholesale && selectedVariant && selectedPrice == null ? "Price Unavailable" : selectedVariant?.inventoryQuantity ? "Add To Bag" : "Out Of Stock"}
             </button>
             <button
               className="store-button-motion w-full flex items-center justify-center gap-2 border border-black/20 py-3.5 text-sm mb-8"
@@ -152,7 +194,7 @@ export function ProductDetail() {
               {storeProduct.material}. {storeProduct.care}.
             </AccordionRow>
             <AccordionRow label="Shipping & Returns">
-              Complimentary no-rush shipping on orders over $95. Returns are accepted within 14 days.
+              Shipping is estimated at checkout. Returns are accepted within 14 days.
             </AccordionRow>
           </aside>
         </section>
@@ -215,14 +257,14 @@ export function ProductDetail() {
         <section className="px-6 lg:px-10 py-14 border-t border-black/10">
           <h2 className="text-center font-semibold mb-10">Style With</h2>
           <div className="grid grid-cols-3 gap-5 max-w-[760px] mx-auto">
-            {related.map((item) => <MiniProduct key={item.id} product={item} />)}
+            {related.map((item) => <MiniProduct key={item.id} product={item} wholesale={wholesale} />)}
           </div>
         </section>
 
         <section className="px-6 lg:px-10 py-14 border-t border-black/10">
           <h2 className="text-center font-semibold mb-10">Recently viewed</h2>
           <div className="grid grid-cols-3 gap-5 max-w-[760px] mx-auto">
-            {recentlyViewed.map((item) => <MiniProduct key={item.id} product={item} />)}
+            {recentlyViewed.map((item) => <MiniProduct key={item.id} product={item} wholesale={wholesale} />)}
           </div>
         </section>
       </main>

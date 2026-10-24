@@ -15,8 +15,9 @@ import {
 } from '../../components/ui/select';
 import { ArrowLeft, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { Product } from '../../types';
+import { Product, ProductVariant } from '../../types';
 import { readOptimizedImage } from '../../utils/image';
+import { supabase } from '../../lib/supabase';
 import defaultProductImage from '../../../imports/image-1.webp';
 
 export function ProductForm() {
@@ -29,6 +30,7 @@ export function ProductForm() {
 
   const [formData, setFormData] = useState({
     name: '',
+    styleNumber: '',
     price: '',
     category: '',
     collection: '',
@@ -37,12 +39,19 @@ export function ProductForm() {
     status: 'draft' as 'published' | 'draft',
     showOnWebsite: false,
     images: [] as string[],
+    material: '',
+    fit: '',
+    care: '',
+    details: '',
+    variants: [{ id: crypto.randomUUID(), sku: '', color: '', colorHex: '#111111', size: '', inventoryQuantity: 0, isActive: true }] as ProductVariant[],
   });
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   useEffect(() => {
     if (existingProduct) {
       setFormData({
         name: existingProduct.name,
+        styleNumber: existingProduct.styleNumber ?? '',
         price: existingProduct.price.toString(),
         category: existingProduct.category,
         collection: existingProduct.collection,
@@ -51,15 +60,33 @@ export function ProductForm() {
         status: existingProduct.status,
         showOnWebsite: existingProduct.showOnWebsite,
         images: existingProduct.images,
+        material: existingProduct.material ?? '',
+        fit: existingProduct.fit ?? '',
+        care: existingProduct.care ?? '',
+        details: (existingProduct.details ?? []).join(', '),
+        variants: existingProduct.variants?.length ? existingProduct.variants : (existingProduct.sizes ?? []).map(size => ({ id: crypto.randomUUID(), sku: '', color: existingProduct.color ?? '', colorHex: existingProduct.colorHex, size, inventoryQuantity: 0, isActive: true })),
       });
     }
   }, [existingProduct]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const styleNumber = formData.styleNumber.trim();
+    const variants = formData.variants.map(variant => ({
+      ...variant,
+      sku: variant.sku.trim() || `${styleNumber}-${variant.color}-${variant.size}`.replace(/[^a-zA-Z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toUpperCase(),
+      color: variant.color.trim(),
+      size: variant.size.trim(),
+    }));
+    if (!styleNumber) { toast.error('Add a style number before saving.'); return; }
+    if (!variants.length || variants.some(variant => !variant.size || !variant.sku || !Number.isInteger(variant.inventoryQuantity) || variant.inventoryQuantity < 0)) { toast.error('Add at least one valid size, SKU, and stock quantity.'); return; }
+    if (new Set(variants.map(variant => variant.sku.toLowerCase())).size !== variants.length) { toast.error('Each variant needs a unique SKU.'); return; }
+    if (new Set(variants.map(variant => `${variant.color.toLowerCase()}|${variant.size.toLowerCase()}`)).size !== variants.length) { toast.error('Each color and size combination must be unique.'); return; }
 
     const product: Product = {
       id: isEditing ? id! : `dairi-${Date.now().toString(36)}`,
+      styleNumber,
       name: formData.name,
       price: parseFloat(formData.price),
       category: formData.category,
@@ -70,30 +97,55 @@ export function ProductForm() {
       showOnWebsite: formData.showOnWebsite,
       images: formData.images.length > 0 ? formData.images : [defaultProductImage],
       createdAt: existingProduct?.createdAt || new Date().toISOString().split('T')[0],
-      color: existingProduct?.color ?? 'DAIRI',
-      colorHex: existingProduct?.colorHex ?? '#111111',
-      details: existingProduct?.details ?? [formData.description],
-      material: existingProduct?.material ?? 'Details coming soon',
-      fit: existingProduct?.fit ?? 'See product description',
-      care: existingProduct?.care ?? 'Follow the care label',
-      sizes: existingProduct?.sizes ?? ['XS', 'S', 'M', 'L', 'XL'],
+      color: variants[0]?.color ?? '',
+      colorHex: variants[0]?.colorHex ?? '#111111',
+      details: formData.details.split(',').map(value => value.trim()).filter(Boolean),
+      material: formData.material,
+      fit: formData.fit,
+      care: formData.care,
+      sizes: Array.from(new Set<string>(variants.map(variant => variant.size))),
+      variants,
     };
 
-    if (isEditing) {
-      updateProduct(id, product);
-      toast.success('Product updated successfully');
-    } else {
-      addProduct(product);
-      toast.success('Product created successfully');
+    try {
+      if (isEditing) {
+        await updateProduct(id!, product);
+        toast.success('Product updated successfully');
+      } else {
+        await addProduct(product);
+        toast.success('Product created successfully');
+      }
+      navigate('/products');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save product');
     }
-
-    navigate('/products');
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []).filter(file => file.type.startsWith('image/')).slice(0, Math.max(0, 6 - formData.images.length));
-    try { const images = await Promise.all(files.map(file => readOptimizedImage(file))); setFormData(prev => ({ ...prev, images: [...prev.images, ...images] })); }
-    catch (error) { toast.error(error instanceof Error ? error.message : 'Could not process image'); }
+    if (!files.length) { e.target.value = ''; return; }
+    if (!supabase) { toast.error('Connect the Supabase backend before uploading product images.'); e.target.value = ''; return; }
+    setUploadingImages(true);
+    const uploadedPaths: string[] = [];
+    try {
+      const images: string[] = [];
+      for (const file of files) {
+        const optimized = await readOptimizedImage(file);
+        const blob = await (await fetch(optimized)).blob();
+        const path = `products/${crypto.randomUUID()}.jpg`;
+        const { error } = await supabase!.storage.from('product-media').upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000', upsert: false });
+        if (error) throw error;
+        uploadedPaths.push(path);
+        images.push(supabase!.storage.from('product-media').getPublicUrl(path).data.publicUrl);
+      }
+      setFormData(prev => ({ ...prev, images: [...prev.images, ...images].slice(0, 6) }));
+      toast.success(`${images.length} image${images.length === 1 ? '' : 's'} uploaded`);
+    }
+    catch (error) {
+      if (uploadedPaths.length) await supabase.storage.from('product-media').remove(uploadedPaths);
+      toast.error(error instanceof Error ? error.message : 'Could not upload image');
+    }
+    finally { setUploadingImages(false); e.target.value = ''; }
     e.target.value = '';
   };
 
@@ -151,13 +203,14 @@ export function ProductForm() {
               <label className="aspect-[3/4] border-2 border-dashed border-neutral-300 hover:border-neutral-400 cursor-pointer flex items-center justify-center transition-colors">
                 <div className="text-center">
                   <Upload className="w-8 h-8 mx-auto mb-2 text-neutral-400" />
-                  <span className="text-xs text-neutral-600">Upload Image</span>
+                  <span className="text-xs text-neutral-600">{uploadingImages ? 'Uploading…' : 'Upload Image'}</span>
                 </div>
                 <input
                   type="file"
                   multiple
                   accept="image/*"
                   onChange={handleImageUpload}
+                  disabled={uploadingImages || formData.images.length >= 6}
                   className="hidden"
                 />
               </label>
@@ -211,14 +264,14 @@ export function ProductForm() {
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Sets">Sets</SelectItem>
+                  <SelectItem value="Women's Tops">Women's Tops</SelectItem>
                   <SelectItem value="Dresses">Dresses</SelectItem>
-                  <SelectItem value="Tops">Tops</SelectItem>
-                  <SelectItem value="Bottoms">Bottoms</SelectItem>
-                  <SelectItem value="Outerwear">Outerwear</SelectItem>
-                  <SelectItem value="Knitwear">Knitwear</SelectItem>
-                  <SelectItem value="Accessories">Accessories</SelectItem>
-                  <SelectItem value="Footwear">Footwear</SelectItem>
+                  <SelectItem value="Pants or skirts">Pants or skirts</SelectItem>
+                  <SelectItem value="Jackets or coats">Jackets or coats</SelectItem>
+                  <SelectItem value="Scarves or shawls">Scarves or shawls</SelectItem>
+                  <SelectItem value="Natural-Fiber Clothing">Natural-Fiber Clothing</SelectItem>
+                  <SelectItem value="Handwoven Collection">Handwoven Collection</SelectItem>
+                  <SelectItem value="Leather Belts">Leather Belts</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -239,6 +292,32 @@ export function ProductForm() {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div>
+            <Label htmlFor="styleNumber" className="text-sm uppercase tracking-wider text-neutral-600 mb-2 block">Style Number *</Label>
+            <Input id="styleNumber" value={formData.styleNumber} onChange={e => setFormData(prev => ({ ...prev, styleNumber: e.target.value }))} required className="h-12 border-neutral-300 rounded-none" placeholder="e.g. DF-2601" />
+          </div>
+
+          <div className="border-t border-neutral-200 pt-8">
+            <div className="flex items-end justify-between gap-4 mb-4"><div><h2 className="text-lg">Variants & inventory</h2><p className="text-sm text-neutral-600">Track stock separately for each color and size. New combinations start with zero stock.</p></div><Button type="button" variant="outline" onClick={() => setFormData(prev => ({ ...prev, variants: [...prev.variants, { id: crypto.randomUUID(), sku: '', color: '', colorHex: '#111111', size: '', inventoryQuantity: 0, isActive: true }] }))}>Add variant</Button></div>
+            <div className="space-y-3">{formData.variants.map((variant, index) => <div key={variant.id} className="border border-neutral-200 p-4 space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-[1.1fr_1fr_.6fr_1fr_.7fr_auto] gap-3 items-end">
+                <div><Label>SKU *</Label><Input value={variant.sku} onChange={e => setFormData(prev => ({ ...prev, variants: prev.variants.map((item, i) => i === index ? { ...item, sku: e.target.value } : item) }))} placeholder="Auto from style, color & size" /></div>
+                <div><Label>Color</Label><Input value={variant.color} onChange={e => setFormData(prev => ({ ...prev, variants: prev.variants.map((item, i) => i === index ? { ...item, color: e.target.value } : item) }))} placeholder="e.g. Indigo" /></div>
+                <div><Label>Color swatch</Label><Input type="color" value={variant.colorHex ?? '#111111'} onChange={e => setFormData(prev => ({ ...prev, variants: prev.variants.map((item, i) => i === index ? { ...item, colorHex: e.target.value } : item) }))} className="h-10 p-1" /></div>
+                <div><Label>Size *</Label><Input value={variant.size} onChange={e => setFormData(prev => ({ ...prev, variants: prev.variants.map((item, i) => i === index ? { ...item, size: e.target.value } : item) }))} required placeholder="One Size" /></div>
+                <div><Label>In stock *</Label><Input type="number" min="0" step="1" value={variant.inventoryQuantity} onChange={e => setFormData(prev => ({ ...prev, variants: prev.variants.map((item, i) => i === index ? { ...item, inventoryQuantity: Number(e.target.value) } : item) }))} required /></div>
+                <Button type="button" variant="ghost" aria-label={`Remove variant ${index + 1}`} disabled={formData.variants.length === 1} onClick={() => setFormData(prev => ({ ...prev, variants: prev.variants.filter((_, i) => i !== index) }))}>Remove</Button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><Label>Retail price override (optional)</Label><Input type="number" min="0" step="0.01" value={variant.retailPrice ?? ''} onChange={e => setFormData(prev => ({ ...prev, variants: prev.variants.map((item, i) => i === index ? { ...item, retailPrice: e.target.value === '' ? undefined : Number(e.target.value) } : item) }))} placeholder={`Use product price ($${formData.price || '0.00'})`} /></div><div><Label>Wholesale price (optional)</Label><Input type="number" min="0" step="0.01" value={variant.wholesalePrice ?? ''} onChange={e => setFormData(prev => ({ ...prev, variants: prev.variants.map((item, i) => i === index ? { ...item, wholesalePrice: e.target.value === '' ? undefined : Number(e.target.value) } : item) }))} placeholder="Set for approved wholesale accounts" /></div></div>
+            </div>)}</div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div><Label htmlFor="material">Fabric / material</Label><Input id="material" value={formData.material} onChange={e => setFormData(prev => ({ ...prev, material: e.target.value }))} /></div>
+            <div><Label htmlFor="fit">Fit</Label><Input id="fit" value={formData.fit} onChange={e => setFormData(prev => ({ ...prev, fit: e.target.value }))} /></div>
+            <div><Label htmlFor="care">Care</Label><Input id="care" value={formData.care} onChange={e => setFormData(prev => ({ ...prev, care: e.target.value }))} /></div>
           </div>
 
           <div>
@@ -263,8 +342,9 @@ export function ProductForm() {
               value={formData.tags}
               onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
               className="h-12 border-neutral-300 rounded-none"
-              placeholder="e.g. summer, featured, bestseller (comma-separated)"
+              placeholder="e.g. summer, featured, bestseller, closeout (comma-separated)"
             />
+            <p className="mt-2 text-xs text-neutral-500">Add the “closeout” tag to show a published product in the storefront Closeout Sale section.</p>
           </div>
 
           {/* Status and Visibility */}

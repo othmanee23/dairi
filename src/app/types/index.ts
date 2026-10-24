@@ -1,7 +1,20 @@
 export type ProductStatus = 'published' | 'draft';
 
+export interface ProductVariant {
+  id: string;
+  sku: string;
+  color: string;
+  colorHex?: string;
+  size: string;
+  retailPrice?: number;
+  wholesalePrice?: number;
+  inventoryQuantity: number;
+  isActive: boolean;
+}
+
 export interface Product {
   id: string;
+  styleNumber?: string;
   name: string;
   price: number;
   images: string[];
@@ -19,6 +32,7 @@ export interface Product {
   fit?: string;
   care?: string;
   sizes?: string[];
+  variants?: ProductVariant[];
 }
 
 export interface Collection {

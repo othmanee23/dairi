@@ -65,7 +65,7 @@ function DraggableProduct({ productId, index, moveProduct, removeProduct }: Drag
 
   return (
     <div
-      ref={(node) => drag(drop(node))}
+      ref={(node) => { if (node) drag(drop(node)); }}
       className={`admin-card flex items-center gap-3 p-3 cursor-move ${
         isDragging ? 'opacity-50' : ''
       }`}
@@ -136,7 +136,7 @@ function LookbookGeneratorContent() {
     readOptimizedImage(file, 1600).then(image => { setCoverImage(image); toast.success('Cover image uploaded'); }).catch(error => toast.error(error instanceof Error ? error.message : 'Could not read selected image'));
   };
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
     if (selectedProducts.length === 0) {
       toast.error('Please select at least one product');
       return;
@@ -153,8 +153,12 @@ function LookbookGeneratorContent() {
       format: settings.defaultFormat,
     };
 
-    addLookbook(lookbook);
-    navigate(`/lookbooks/${lookbook.id}/preview`);
+    try {
+      await addLookbook(lookbook);
+      navigate(`/lookbooks/${lookbook.id}/preview`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not save lookbook');
+    }
   };
 
   return (

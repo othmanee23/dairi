@@ -1,21 +1,30 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router";
+import { useNavigate, Link, useLocation } from "react-router";
 import { useApp } from "../../context/AppContext";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { ArrowRight } from "lucide-react";
 import heroImage from "../../../imports/image.webp";
+import { supabaseReady } from "../../lib/supabase";
 
 export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const { login } = useApp();
   const navigate = useNavigate();
+  const location = useLocation();
+  const notice = (location.state as { message?: string } | null)?.message;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    login();
-    navigate("/");
+    if (submitting) return;
+    setError("");
+    setSubmitting(true);
+    try { await login(email.trim().toLowerCase(), password); navigate("/", { replace: true }); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Sign-in failed. Please try again."); }
+    finally { setSubmitting(false); }
   };
 
   return (
@@ -78,6 +87,9 @@ export function Login() {
             </p>
           </div>
 
+          {!supabaseReady && <p role="status" className="mb-5 border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">Local backend is not configured yet. Start Supabase and add its URL and publishable key to .env.local.</p>}
+          {notice && <p role="status" className="mb-5 border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">{notice}</p>}
+          {error && <p role="alert" className="mb-5 border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <Label
@@ -89,6 +101,7 @@ export function Login() {
               <Input
                 id="email"
                 type="email"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -107,6 +120,7 @@ export function Login() {
               <Input
                 id="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -126,15 +140,17 @@ export function Login() {
 
             <button
               type="submit"
-              className="admin-button mt-2 flex h-12 w-full items-center justify-center gap-3 bg-black text-xs uppercase tracking-[3px] text-white hover:bg-neutral-800"
+              disabled={!supabaseReady || submitting}
+              aria-busy={submitting}
+              className="admin-button disabled:cursor-not-allowed disabled:opacity-40 mt-2 flex h-12 w-full items-center justify-center gap-3 bg-black text-xs uppercase tracking-[3px] text-white hover:bg-neutral-800"
             >
-              Sign In <ArrowRight size={13} />
+              {submitting ? "Signing In…" : "Sign In"} {!submitting && <ArrowRight size={13} />}
             </button>
           </form>
 
           <div className="mt-10 border-t border-black/10 pt-8 text-center">
             <p className="text-[10px] text-black/35">
-              Demo: Use any email and password to sign in
+Secure DAIRI administrator sign-in
             </p>
           </div>
 

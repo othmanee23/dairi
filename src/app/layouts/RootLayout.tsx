@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { useApp } from "../context/AppContext";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   LayoutDashboard,
   Package,
@@ -13,8 +14,10 @@ import {
   X,
   ChevronRight,
   MessageCircle,
+  ClipboardCheck,
 } from "lucide-react";
 import dairiLogo from "../../imports/dairi-logo.svg";
+import { CatalogStatusBanner } from "../components/store/CatalogStatusBanner";
 
 const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -22,32 +25,51 @@ const navigation = [
   { name: "Collections", href: "/collections", icon: Layers },
   { name: "Lookbooks", href: "/lookbooks", icon: BookOpen },
   { name: "Client activity", href: "/activity", icon: MessageCircle },
+  { name: "Wholesale applications", href: "/wholesale-applications", icon: ClipboardCheck },
   { name: "Settings", href: "/settings", icon: SettingsIcon },
 ];
 
 export function RootLayout() {
-  const { isAuthenticated, logout } = useApp();
+  const { isAuthenticated, authReady, logout } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) navigate("/auth/login");
-  }, [isAuthenticated, navigate]);
+    if (authReady && !isAuthenticated) navigate("/auth/login");
+  }, [authReady, isAuthenticated, navigate]);
 
   useEffect(() => {
     setMobileNavOpen(false);
   }, [location.pathname]);
 
-  if (!isAuthenticated) return null;
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileNavOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [mobileNavOpen]);
+
+  if (!authReady || !isAuthenticated) return null;
 
   const currentPage = navigation.find((item) =>
     item.href === "/" ? location.pathname === "/" : location.pathname.startsWith(item.href)
   )?.name ?? "Admin Studio";
 
-  const handleLogout = () => {
-    logout();
-    navigate("/auth/login");
+  const handleLogout = async () => {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await logout();
+      navigate("/auth/login", { replace: true });
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Could not sign out. Please try again.");
+    } finally {
+      setSigningOut(false);
+    }
   };
 
   return (
@@ -61,7 +83,7 @@ export function RootLayout() {
         />
       )}
 
-      <aside className={`admin-sidebar fixed inset-y-0 left-0 z-50 flex w-[264px] flex-col border-r transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside id="admin-navigation-panel" role={mobileNavOpen ? "dialog" : undefined} aria-label="Admin navigation panel" aria-modal={mobileNavOpen || undefined} className={`admin-sidebar fixed inset-y-0 left-0 z-50 flex w-[264px] flex-col border-r transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="admin-brand flex h-[104px] items-center border-b px-7">
           <Link to="/" aria-label="DAIRI Admin home" className="block w-[150px]">
             <img src={dairiLogo} alt="DAIRI" className="block h-auto w-full" />
@@ -99,9 +121,9 @@ export function RootLayout() {
             <ExternalLink className="h-[17px] w-[17px] shrink-0" strokeWidth={1.7} />
             <span>View Store</span>
           </Link>
-          <button onClick={handleLogout} className="admin-nav-link flex h-11 w-full items-center gap-3 px-3 text-left text-sm">
+          <button type="button" onClick={() => void handleLogout()} disabled={signingOut} className="admin-nav-link flex h-11 w-full items-center gap-3 px-3 text-left text-sm disabled:cursor-wait disabled:opacity-50">
             <LogOut className="h-[17px] w-[17px] shrink-0" strokeWidth={1.7} />
-            <span>Sign out</span>
+            <span>{signingOut ? "Signing out…" : "Sign out"}</span>
           </button>
           <div className="admin-session mt-4 flex items-center gap-3 border-t px-2 pt-4">
             <span className="admin-session-mark flex h-9 w-9 items-center justify-center text-xs font-semibold">D</span>
@@ -119,6 +141,8 @@ export function RootLayout() {
             <button
               type="button"
               aria-label="Open navigation"
+              aria-controls="admin-navigation-panel"
+              aria-expanded={mobileNavOpen}
               className="inline-flex h-9 w-9 items-center justify-center text-black/65 hover:bg-black/5 lg:hidden"
               onClick={() => setMobileNavOpen(true)}
             >
@@ -135,6 +159,7 @@ export function RootLayout() {
             <ExternalLink size={14} />
           </Link>
         </header>
+        <CatalogStatusBanner />
         <main className="admin-main min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
           <Outlet />
         </main>

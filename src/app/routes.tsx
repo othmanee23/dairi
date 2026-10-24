@@ -7,15 +7,22 @@ const StoreFront = lazy(() => import('./pages/store/StoreFront').then(module => 
 const ShopAll = lazy(() => import('./pages/store/ShopAll').then(module => ({ default: module.ShopAll })));
 const ProductDetail = lazy(() => import('./pages/store/ProductDetail').then(module => ({ default: module.ProductDetail })));
 const StoreCollection = lazy(() => import('./pages/store/StoreCollection').then(module => ({ default: module.StoreCollection })));
+const CloseoutSale = lazy(() => import('./pages/store/CloseoutSale').then(module => ({ default: module.CloseoutSale })));
 const Journal = lazy(() => import('./pages/store/Journal').then(module => ({ default: module.Journal })));
 const JournalArticle = lazy(() => import('./pages/store/JournalArticle').then(module => ({ default: module.JournalArticle })));
 const Support = lazy(() => import('./pages/store/Support').then(module => ({ default: module.Support })));
+const Wholesale = lazy(() => import('./pages/store/Wholesale').then(module => ({ default: module.Wholesale })));
+const WholesaleApplications = lazy(() => import('./pages/dashboard/WholesaleApplications').then(module => ({ default: module.WholesaleApplications })));
 const Cart = lazy(() => import('./pages/store/Cart').then(module => ({ default: module.Cart })));
 const Wishlist = lazy(() => import('./pages/store/Wishlist').then(module => ({ default: module.Wishlist })));
 const Checkout = lazy(() => import('./pages/store/Checkout').then(module => ({ default: module.Checkout })));
 const OrderConfirmation = lazy(() => import('./pages/store/Checkout').then(module => ({ default: module.OrderConfirmation })));
 const Login = lazy(() => import('./pages/auth/Login').then(module => ({ default: module.Login })));
+const CustomerLogin = lazy(() => import('./pages/auth/CustomerLogin').then(module => ({ default: module.CustomerLogin })));
+const CustomerRegister = lazy(() => import('./pages/auth/CustomerRegister').then(module => ({ default: module.CustomerRegister })));
+const CustomerAccount = lazy(() => import('./pages/store/CustomerAccount').then(module => ({ default: module.CustomerAccount })));
 const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword').then(module => ({ default: module.ForgotPassword })));
+const UpdatePassword = lazy(() => import('./pages/auth/UpdatePassword').then(module => ({ default: module.UpdatePassword })));
 const Dashboard = lazy(() => import('./pages/dashboard/Dashboard').then(module => ({ default: module.Dashboard })));
 const ClientActivity = lazy(() => import('./pages/dashboard/ClientActivity').then(module => ({ default: module.ClientActivity })));
 const ProductsList = lazy(() => import('./pages/products/ProductsList').then(module => ({ default: module.ProductsList })));
@@ -41,6 +48,7 @@ export const router = createBrowserRouter([
     Component: ProductDetail,
   },
   { path: '/store/collections/:id', Component: StoreCollection },
+  { path: '/store/sale', Component: CloseoutSale },
   {
     path: '/store/journal',
     Component: Journal,
@@ -53,6 +61,8 @@ export const router = createBrowserRouter([
     path: '/store/support',
     Component: Support,
   },
+  { path: '/store/wholesale', Component: Wholesale },
+  { path: '/store/account', Component: CustomerAccount },
   {
     path: '/store/cart',
     Component: Cart,
@@ -69,7 +79,10 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/auth/login" replace /> },
       { path: 'login', Component: Login },
+      { path: 'customer-login', Component: CustomerLogin },
+      { path: 'register', Component: CustomerRegister },
       { path: 'forgot-password', Component: ForgotPassword },
+      { path: 'update-password', Component: UpdatePassword },
     ],
   },
   {
@@ -78,6 +91,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, Component: Dashboard },
       { path: 'activity', Component: ClientActivity },
+      { path: 'wholesale-applications', Component: WholesaleApplications },
       { path: 'products', Component: ProductsList },
       { path: 'products/new', Component: ProductForm },
       { path: 'products/:id/edit', Component: ProductForm },

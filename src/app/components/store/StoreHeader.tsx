@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { Heart, Menu, Search, ShoppingBag, Store, User, X } from "lucide-react";
+import { Heart, Menu, Search, ShoppingBag, Store, User, UserRound, X } from "lucide-react";
 
 import dairiLogo from "../../../imports/dairi-logo.svg";
 import menuImage from "../../../imports/image-4.webp";
 import modalImage from "../../../imports/image-2.webp";
-import { toStoreProduct } from "../../data/storeProducts";
+import { withCustomerPrice, customerPriceLabel } from "../../data/storeProducts";
 import { useApp } from "../../context/AppContext";
+import { CatalogStatusBanner } from "./CatalogStatusBanner";
 
 const CHARCOAL = "#111111";
 
@@ -14,6 +15,7 @@ const navLinks = [
   { label: "Shop", href: "/store/shop" },
   { label: "New Arrivals", href: "/store/shop?featured=new" },
   { label: "Collections", href: "/store/shop" },
+  { label: "Closeout Sale", href: "/store/sale" },
   { label: "Journal", href: "/store/journal" },
 ];
 
@@ -34,11 +36,13 @@ export function StoreHeader() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [newsletterOpen, setNewsletterOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const { products: catalog, collections, cart, wishlist, subscribe, settings } = useApp();
+  const { products: catalog, collections, cart, wishlist, subscribe, settings, customerAccount } = useApp();
+  const wholesale = customerAccount?.wholesaleStatus === 'approved';
   const menuColumns = [...menuColumnsBase, { title: "Collections", links: collections.map(collection => collection.name) }];
-  const storeProducts = catalog.filter(p => p.status === "published" && p.showOnWebsite).map(toStoreProduct);
+  const storeProducts = catalog.filter(p => p.status === "published" && p.showOnWebsite).map(product => withCustomerPrice(product, wholesale));
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterMessage, setNewsletterMessage] = useState("");
+  const [newsletterSubmitting, setNewsletterSubmitting] = useState(false);
 
   const searchResults = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -55,7 +59,7 @@ export function StoreHeader() {
       <header className="store-header relative z-50 bg-white" style={{ color: CHARCOAL }}>
         <div className="h-8 bg-black flex items-center justify-center px-4">
           <p className="text-[10px] tracking-wide text-white/85 text-center">
-            Complimentary shipping on orders of $95 or more. Shop now
+            Shipping and any applicable taxes are estimated at checkout. Shop now
           </p>
         </div>
 
@@ -94,6 +98,9 @@ export function StoreHeader() {
             <button className="hover:opacity-60 transition-opacity store-button-motion" aria-label="Private list" onClick={() => setNewsletterOpen(true)}>
               <User size={15} />
             </button>
+            <Link to={customerAccount ? "/store/account" : "/auth/customer-login"} className="hover:opacity-60 transition-opacity store-button-motion" aria-label="Customer account" title="Customer account">
+              <UserRound size={16} />
+            </Link>
             <Link to="/store/wishlist" className="flex items-center gap-1 hover:opacity-60 transition-opacity store-button-motion" aria-label="Wishlist">
               <Heart size={15} />
               <span className="text-[12px]">{wishlist.length}</span>
@@ -146,12 +153,14 @@ export function StoreHeader() {
                 {link.label}
               </Link>
             ))}
+            <Link to={customerAccount ? "/store/account" : "/auth/customer-login"} className="block border-b border-black/5 py-3 text-sm font-medium" onClick={() => setMobileOpen(false)}>{customerAccount ? "My Account" : "Customer Sign In"}</Link>
             <button className="block py-3 text-sm font-medium" onClick={() => setSearchOpen(true)}>
               Search
             </button>
           </div>
         )}
       </header>
+      <CatalogStatusBanner />
 
       {searchOpen && (
         <div className="store-search-overlay fixed inset-0 z-[70] bg-white">
@@ -183,7 +192,7 @@ export function StoreHeader() {
                     <span className="absolute right-4 bottom-3 text-2xl">+</span>
                   </div>
                   <p className="text-sm font-medium">{product.name}</p>
-                  <p className="text-sm mt-1">${product.price}</p>
+                  <p className="text-sm mt-1">{customerPriceLabel(product, wholesale)}</p>
                 </Link>
               ))}
             </div> : <p className="py-12 text-center text-sm text-black/55">No pieces match “{query}”.</p>}
@@ -207,8 +216,8 @@ export function StoreHeader() {
                 Join for collection notes, launches, and private studio updates.
               </p>
               <input type="email" required value={newsletterEmail} onChange={e=>setNewsletterEmail(e.target.value)} className="w-full border border-black/20 px-4 py-4 mb-4 text-sm" placeholder="Enter your email address" />
-              <button className="bg-black text-white px-8 py-4 text-sm" onClick={() => { if (subscribe(newsletterEmail)) { setNewsletterMessage("You’re on the list."); setNewsletterEmail(""); } else setNewsletterMessage("Enter a valid email address."); }}>
-                Unlock Access
+              <button disabled={newsletterSubmitting} className="bg-black text-white px-8 py-4 text-sm disabled:opacity-50" onClick={async () => { setNewsletterSubmitting(true); try { await subscribe(newsletterEmail); setNewsletterMessage("You’re on the list."); setNewsletterEmail(""); } catch (error) { setNewsletterMessage(error instanceof Error ? error.message : "Could not subscribe. Please try again."); } finally { setNewsletterSubmitting(false); } }}>
+                {newsletterSubmitting ? "Saving…" : "Unlock Access"}
               </button>
               {newsletterMessage && <p role="status" className="text-xs mt-4">{newsletterMessage}</p>}
             </div>

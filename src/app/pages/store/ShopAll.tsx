@@ -4,13 +4,15 @@ import { ChevronDown, Heart } from "lucide-react";
 
 import { StoreFooter } from "../../components/store/StoreFooter";
 import { StoreHeader } from "../../components/store/StoreHeader";
-import { StoreProduct, toStoreProduct } from "../../data/storeProducts";
+import { StoreProduct, withCustomerPrice, customerPriceLabel } from "../../data/storeProducts";
 import { useApp } from "../../context/AppContext";
+import { usePageSeo } from "../../lib/seo";
 
-const categories = ["Sets", "Dresses", "Tops", "Outerwear", "Accessories"];
+const categories = ["Women's Tops", "Dresses", "Pants or skirts", "Jackets or coats", "Scarves or shawls", "Natural-Fiber Clothing", "Handwoven Collection", "Leather Belts", "Sets", "Tops", "Bottoms", "Outerwear", "Accessories"];
 
 function ShopProductCard({ product }: { product: StoreProduct }) {
-  const { wishlist, toggleWishlist } = useApp();
+  const { wishlist, toggleWishlist, customerAccount } = useApp();
+  const wholesale = customerAccount?.wholesaleStatus === 'approved';
   const wishlisted = wishlist.includes(product.id);
 
   return (
@@ -34,7 +36,7 @@ function ShopProductCard({ product }: { product: StoreProduct }) {
         <span className="absolute right-5 bottom-4 text-2xl leading-none">+</span>
       </div>
       <p className="text-sm font-medium leading-snug">{product.name}</p>
-      <p className="text-sm mt-1">${product.price}</p>
+      <p className="text-sm mt-1">{customerPriceLabel(product, wholesale)}</p>
     </Link>
   );
 }
@@ -45,25 +47,24 @@ export function ShopAll() {
   const [sortBy, setSortBy] = useState("featured");
   const [filterOpen, setFilterOpen] = useState(false);
   const [maxPrice, setMaxPrice] = useState("all");
-  const { products: catalog } = useApp();
+  const { products: catalog, customerAccount } = useApp();
+  const wholesale = customerAccount?.wholesaleStatus === 'approved';
+  usePageSeo({ title: activeCategory === 'All' ? 'Shop Women’s Clothing | DAIRI' : `${activeCategory} | DAIRI`, description: `Shop DAIRI ${activeCategory === 'All' ? 'women’s clothing and new fashion collections' : activeCategory.toLowerCase()}. Browse product details, available sizes, and USD pricing.`, path: '/store/shop' });
   useEffect(() => { setActiveCategory(searchParams.get("category") || "All"); }, [searchParams]);
   const products = useMemo(() => {
-    let next = catalog.filter((p) => p.status === "published" && p.showOnWebsite).map(toStoreProduct);
+    let next = catalog.filter((p) => p.status === "published" && p.showOnWebsite).map(product => withCustomerPrice(product, wholesale));
     const featured = searchParams.get("featured");
     if (featured === "new") next = next.filter(product => product.isNew);
     if (featured === "bestseller") next = next.filter(product => product.isBestseller);
-    if (activeCategory === "Pants & Leggings") next = next.filter((product) => product.category === "Bottoms" || product.name.includes("Trouser"));
-    else if (activeCategory === "Skirts") next = next.filter((product) => product.name.includes("Skirt"));
-    else if (activeCategory === "Stretch" || activeCategory === "Lounge") next = next.filter((product) => product.category === "Tops" || product.category === "Sets");
-    else if (activeCategory !== "All") next = next.filter((product) => product.category === activeCategory);
+    if (activeCategory !== "All") next = next.filter((product) => product.category === activeCategory);
 
-    if (maxPrice === "under200") next = next.filter((product) => product.price < 200);
-    if (maxPrice === "under300") next = next.filter((product) => product.price < 300);
-    if (sortBy === "price-low") next.sort((a, b) => a.price - b.price);
-    if (sortBy === "price-high") next.sort((a, b) => b.price - a.price);
+    if (maxPrice === "under200") next = next.filter((product) => product.displayPrice != null && product.displayPrice < 200);
+    if (maxPrice === "under300") next = next.filter((product) => product.displayPrice != null && product.displayPrice < 300);
+    if (sortBy === "price-low") next.sort((a, b) => (a.displayPrice ?? Number.POSITIVE_INFINITY) - (b.displayPrice ?? Number.POSITIVE_INFINITY));
+    if (sortBy === "price-high") next.sort((a, b) => (b.displayPrice ?? -1) - (a.displayPrice ?? -1));
     if (sortBy === "name") next.sort((a, b) => a.name.localeCompare(b.name));
     return next;
-  }, [activeCategory, maxPrice, sortBy, catalog, searchParams]);
+  }, [activeCategory, maxPrice, sortBy, catalog, searchParams, wholesale]);
 
   return (
     <div className="store-page min-h-screen bg-white" style={{ fontFamily: "Inter, sans-serif" }}>

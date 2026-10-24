@@ -11,8 +11,9 @@ import img9 from "../../../imports/image-9.webp";
 import DairiLogo from "../../../imports/Group1321319317";
 import { StoreFooter } from "../../components/store/StoreFooter";
 import { StoreHeader } from "../../components/store/StoreHeader";
-import { StoreProduct, toStoreProduct } from "../../data/storeProducts";
+import { StoreProduct, withCustomerPrice, customerPriceLabel } from "../../data/storeProducts";
 import { useApp } from "../../context/AppContext";
+import { usePageSeo } from "../../lib/seo";
 
 const CHARCOAL = "#171717";
 const SOFT_TEXT = "#4c4a46";
@@ -46,7 +47,7 @@ function CategoryTile({ title, image, href }: { title: string; image: string; hr
   );
 }
 
-function HomeProductCard({ product }: { product: StoreProduct }) {
+function HomeProductCard({ product, wholesale }: { product: StoreProduct; wholesale: boolean }) {
   return (
     <Link to={`/store/products/${product.id}`} className="store-card group block">
       <div className="relative aspect-[4/5] bg-[#f5f5f5] overflow-hidden mb-4">
@@ -64,14 +65,14 @@ function HomeProductCard({ product }: { product: StoreProduct }) {
           {product.name}
         </p>
         <p className="text-[12px] mt-1" style={{ color: SOFT_TEXT }}>
-          ${product.price}
+          {customerPriceLabel(product, wholesale)}
         </p>
       </div>
     </Link>
   );
 }
 
-function SpotlightProductCard({ product }: { product: StoreProduct }) {
+function SpotlightProductCard({ product, wholesale }: { product: StoreProduct; wholesale: boolean }) {
   return (
     <Link
       to={`/store/products/${product.id}`}
@@ -89,7 +90,7 @@ function SpotlightProductCard({ product }: { product: StoreProduct }) {
           <p className="truncate text-[13px] font-medium leading-snug text-[#171717]">{product.name}</p>
           <p className="mt-1 text-[10px] uppercase tracking-[0.14em] text-black/45">{product.color}</p>
         </div>
-        <p className="shrink-0 text-[13px] text-[#171717]">${product.price}</p>
+        <p className="shrink-0 text-[13px] text-[#171717]">{customerPriceLabel(product, wholesale)}</p>
       </div>
     </Link>
   );
@@ -154,9 +155,13 @@ function OpeningLoader({ leaving }: { leaving: boolean }) {
 }
 
 export function StoreFront() {
-  const { products } = useApp();
-  const spotlightProducts = products.filter(p => p.status === "published" && p.showOnWebsite).map(toStoreProduct);
+  const { products, customerAccount } = useApp();
+  usePageSeo({ title: 'DAIRI | Contemporary Women’s Fashion', description: 'Discover contemporary women’s clothing, new arrivals, and handcrafted collections from the DAIRI fashion studio.', path: '/store' });
+  const wholesale = customerAccount?.wholesaleStatus === 'approved';
+  const spotlightProducts = products.filter(p => p.status === "published" && p.showOnWebsite).map(product => withCustomerPrice(product, wholesale));
   const featuredProducts = spotlightProducts.filter(p => p.isNew || p.isBestseller).slice(0, 5);
+  const closeoutProducts = products.filter(p => p.status === "published" && p.showOnWebsite && p.tags.some(tag => tag.trim().toLowerCase() === "closeout")).map(product => withCustomerPrice(product, wholesale)).slice(0, 5);
+  const homeFeatureTiles = closeoutProducts.length ? [...featureTiles, { title: "Closeout Sale", image: img2, href: "/store/sale" }] : featureTiles;
   const spotlightRailRef = useRef<HTMLDivElement>(null);
   const [showLoader, setShowLoader] = useState(false);
   const [loaderLeaving, setLoaderLeaving] = useState(false);
@@ -222,8 +227,8 @@ export function StoreFront() {
         </section>
 
         <section id="collections" className="px-8 lg:px-10 pb-16">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {featureTiles.map((tile) => (
+          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-5">
+            {homeFeatureTiles.map((tile) => (
               <CategoryTile key={tile.title} {...tile} />
             ))}
           </div>
@@ -233,10 +238,25 @@ export function StoreFront() {
           <h2 className="text-base font-semibold mb-10">What to Wear Now</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-5 gap-y-10">
             {featuredProducts.map((product) => (
-              <HomeProductCard key={product.id} product={product} />
+              <HomeProductCard key={product.id} product={product} wholesale={wholesale} />
             ))}
           </div>
         </section>
+
+        {closeoutProducts.length > 0 && (
+          <section className="px-8 lg:px-10 pb-16" aria-labelledby="closeout-heading">
+            <div className="mb-6 flex items-end justify-between gap-4 border-b border-black/10 pb-4">
+              <div>
+                <p className="mb-2 text-[10px] uppercase tracking-[0.2em] text-black/45">Limited availability</p>
+                <h2 id="closeout-heading" className="text-xl font-medium lg:text-2xl">Closeout Sale</h2>
+              </div>
+              <Link to="/store/sale" className="text-xs font-medium underline underline-offset-4">View all</Link>
+            </div>
+            <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-5">
+              {closeoutProducts.map(product => <HomeProductCard key={product.id} product={product} wholesale={wholesale} />)}
+            </div>
+          </section>
+        )}
 
         <section className="px-8 lg:px-10 pb-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -300,7 +320,7 @@ export function StoreFront() {
             className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:gap-6"
           >
             {spotlightProducts.map((product) => (
-              <SpotlightProductCard key={product.id} product={product} />
+              <SpotlightProductCard key={product.id} product={product} wholesale={wholesale} />
             ))}
           </div>
         </section>

@@ -4,9 +4,11 @@ import { StoreFooter } from "../../components/store/StoreFooter";
 import { StoreHeader } from "../../components/store/StoreHeader";
 import { journalPosts } from "../../data/journal";
 import heroImage from "../../../imports/image.webp";
+import { usePageSeo } from "../../lib/seo";
 
 export function Journal() {
   const [featured, ...posts] = journalPosts;
+  usePageSeo({ title: 'DAIRI Journal | Fashion, Craft, and Collections', description: 'Read notes from the DAIRI studio on contemporary fashion, collections, materials, and considered design.', path: '/store/journal' });
 
   return (
     <div className="store-page min-h-screen bg-white" style={{ fontFamily: "Inter, sans-serif" }}>

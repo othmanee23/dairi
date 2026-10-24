@@ -1,69 +1,59 @@
-import { useState } from 'react';
-import { Link } from 'react-router';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
+import { FormEvent, useState } from 'react';
+import { Link, useSearchParams } from 'react-router';
+import { useApp } from '../../context/AppContext';
+import { supabaseReady } from '../../lib/supabase';
 import { ArrowLeft } from 'lucide-react';
-import { toast } from 'sonner';
 
 export function ForgotPassword() {
+  const [searchParams] = useSearchParams();
+  const audience = searchParams.get('audience') === 'customer' ? 'customer' : 'admin';
+  const loginPath = audience === 'customer' ? '/auth/customer-login' : '/auth/login';
+  const { requestPasswordReset } = useApp();
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitted(true);
-    toast.info('Local demo mode does not send email. Connect an auth provider to enable password reset.');
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setError('');
+    setBusy(true);
+    try {
+      await requestPasswordReset(email, audience);
+      setSubmitted(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'We could not send the reset email. Please try again.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <div className="flex h-screen items-center justify-center p-8">
+    <div className="flex min-h-screen items-center justify-center p-8">
       <div className="w-full max-w-md">
-        <Link 
-          to="/auth/login" 
-          className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-black mb-8 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to login
+        <Link to={loginPath} className="mb-8 inline-flex items-center gap-2 text-sm text-neutral-600 transition-colors hover:text-black">
+          <ArrowLeft className="h-4 w-4" /> Back to login
         </Link>
-
-        <div className="mb-12">
-          <h1 className="text-4xl mb-2 tracking-tight">Reset Password</h1>
-          <p className="text-neutral-600">
-            Enter your email to check the reset flow
-          </p>
+        <div className="mb-10">
+          <p className="mb-3 text-[10px] uppercase tracking-[3px] text-black/40">Account recovery</p>
+          <h1 className="mb-2 text-4xl tracking-tight">Reset password</h1>
+          <p className="text-sm leading-6 text-neutral-600">Enter the email address on your DAIRI {audience} account. We’ll send a secure reset link.</p>
         </div>
 
-        {!submitted ? (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <Label htmlFor="email" className="text-sm uppercase tracking-wider text-neutral-600 mb-2 block">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="h-12 border-neutral-300 rounded-none"
-                placeholder="your@email.com"
-              />
-            </div>
-
-            <Button 
-              type="submit" 
-              className="w-full h-12 bg-black text-white hover:bg-neutral-800 rounded-none"
-            >
-              Send Reset Link
-            </Button>
-          </form>
+        {!supabaseReady && <p role="status" className="mb-5 border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">Connect the Supabase backend to enable password recovery.</p>}
+        {error && <p role="alert" className="mb-5 border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
+        {submitted ? (
+          <p role="status" className="border border-emerald-200 bg-emerald-50 p-4 text-sm leading-6 text-emerald-900">If an account exists for <strong>{email}</strong>, a password reset link is on its way.</p>
         ) : (
-          <div className="p-8 bg-neutral-50 border border-neutral-200">
-            <p className="text-neutral-600">
-              Local demo mode has no email service, so no reset link was sent to <strong>{email}</strong>. Configure an authentication provider to enable password recovery.
-            </p>
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label htmlFor="reset-email" className="mb-2 block text-[10px] uppercase tracking-[2px] text-black/55">Email</label>
+              <input id="reset-email" type="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} required maxLength={254} className="h-12 w-full rounded-none border border-black/20 bg-white px-3 text-sm focus:border-black focus:outline-none" placeholder="your@email.com" />
+            </div>
+            <button type="submit" disabled={!supabaseReady || busy} className="admin-button mt-2 flex h-12 w-full items-center justify-center bg-black text-xs uppercase tracking-[3px] text-white hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40">
+              {busy ? 'Sending…' : 'Send reset link'}
+            </button>
+          </form>
         )}
       </div>
     </div>

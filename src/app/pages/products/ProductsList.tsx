@@ -18,7 +18,8 @@ import {
   List, 
   Trash2,
   Eye,
-  EyeOff 
+  EyeOff,
+  Package,
 } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { toast } from 'sonner';
@@ -50,6 +51,8 @@ export function ProductsList() {
   const filteredProducts = useMemo(() => {
     return products.filter(product => {
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (product.styleNumber ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.variants?.some(variant => variant.sku.toLowerCase().includes(searchQuery.toLowerCase())) ||
         product.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
       const matchesCollection = collectionFilter === 'all' || product.collection === collectionFilter;
@@ -73,20 +76,28 @@ export function ProductsList() {
     );
   };
 
-  const handleBulkDelete = () => {
+  const handleBulkDelete = async () => {
     if (window.confirm(`Delete ${selectedProducts.length} products?`)) {
-      deleteProducts(selectedProducts);
-      setSelectedProducts([]);
-      toast.success(`${selectedProducts.length} products deleted`);
+      const count = selectedProducts.length;
+      try {
+        await deleteProducts(selectedProducts);
+        setSelectedProducts([]);
+        toast.success(`${count} products deleted`);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Could not delete products');
+      }
     }
   };
 
-  const handleBulkPublish = () => {
-    selectedProducts.forEach(id => {
-      updateProduct(id, { status: 'published', showOnWebsite: true });
-    });
-    setSelectedProducts([]);
-    toast.success(`${selectedProducts.length} products published`);
+  const handleBulkPublish = async () => {
+    const count = selectedProducts.length;
+    try {
+      await Promise.all(selectedProducts.map(id => updateProduct(id, { status: 'published', showOnWebsite: true })));
+      setSelectedProducts([]);
+      toast.success(`${count} products published`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not publish products');
+    }
   };
 
   return (
@@ -234,6 +245,8 @@ export function ProductsList() {
                     </div>
                   </div>
                   <h3 className="text-sm mb-1 truncate">{product.name}</h3>
+                  <p className="text-xs text-neutral-500 mb-1">Style {product.styleNumber || '—'} · {product.variants?.length ?? 0} variants</p>
+                  <p className="text-xs text-neutral-500 mb-2">{product.variants?.reduce((total, variant) => total + variant.inventoryQuantity, 0) ?? 0} in stock</p>
                   <p className="text-sm text-neutral-600 mb-2">${product.price}</p>
                   <div className="flex items-center gap-2">
                     <span
@@ -309,7 +322,7 @@ export function ProductsList() {
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <span className="text-sm">{product.name}</span>
+                        <span className="text-sm">{product.name}<span className="block text-xs text-neutral-500">Style {product.styleNumber || '—'} · {product.variants?.reduce((total, variant) => total + variant.inventoryQuantity, 0) ?? 0} in stock</span></span>
                       </div>
                     </td>
                     <td className="p-4 text-sm">${product.price}</td>

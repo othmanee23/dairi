@@ -1,0 +1,14 @@
+import { FormEvent, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router';
+import { useApp } from '../../context/AppContext';
+
+export function CustomerLogin() {
+  const { customerLogin, customerAccount } = useApp();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
+  const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+  const notice = (location.state as { message?: string } | null)?.message;
+  const submit = async (event: FormEvent) => { event.preventDefault(); setBusy(true); setError(''); try { await customerLogin(email, password); navigate('/store/account'); } catch (cause) { setError(cause instanceof Error ? cause.message : 'Sign-in failed. Please try again.'); } finally { setBusy(false); } };
+  return <main className="min-h-screen bg-[#f7f6f3] px-6 py-16"><div className="mx-auto max-w-md"><Link to="/store" className="text-xs uppercase tracking-[2px]">DAIRI</Link><p className="mt-16 text-[10px] uppercase tracking-[3px] text-black/45">Customer account</p><h1 className="mt-3 text-4xl">Welcome back</h1><p className="mt-3 text-sm leading-6 text-black/60">Sign in to manage your account and wholesale application.</p>{notice && <p role="status" className="mt-6 border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">{notice}</p>}{customerAccount && <p className="mt-6 border border-emerald-200 bg-emerald-50 p-4 text-sm">You are already signed in. <Link to="/store/account" className="underline">View account</Link></p>}{error && <p role="alert" className="mt-6 border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}<form onSubmit={submit} className="mt-8 space-y-5"><label className="block text-xs">Email<input required type="email" autoComplete="email" maxLength={254} value={email} onChange={event => setEmail(event.target.value)} className="mt-2 h-12 w-full border border-black/20 bg-white px-3 text-sm" /></label><label className="block text-xs">Password<input required type="password" autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} className="mt-2 h-12 w-full border border-black/20 bg-white px-3 text-sm" /></label><div className="flex justify-end"><Link to="/auth/forgot-password?audience=customer" className="text-xs underline text-black/60">Forgot password?</Link></div><button disabled={busy} className="w-full bg-black py-4 text-xs uppercase tracking-[2px] text-white disabled:opacity-50">{busy ? 'Signing in…' : 'Sign in'}</button></form><p className="mt-6 text-sm text-black/60">New to DAIRI? <Link to="/auth/register" className="underline text-black">Create an account</Link></p><p className="mt-5 text-xs text-black/45"><Link to="/auth/login" className="underline">Administrator sign-in</Link></p></div></main>;
+}

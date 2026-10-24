@@ -25,10 +25,12 @@ export function upgradeLocalImageReference(source: string): string {
 export interface StoreProduct {
   id: string;
   name: string;
+  styleNumber?: string;
   category: string;
   color: string;
   colorHex: string;
   price: number;
+  displayPrice?: number | null;
   image: string;
   isNew?: boolean;
   isBestseller?: boolean;
@@ -232,6 +234,7 @@ export function toStoreProduct(product: Product): StoreProduct {
   return {
     id: product.id,
     name: product.name,
+    styleNumber: product.styleNumber,
     category: product.category,
     color: product.color ?? "DAIRI",
     colorHex: product.colorHex ?? "#111111",
@@ -246,4 +249,25 @@ export function toStoreProduct(product: Product): StoreProduct {
     care: product.care ?? "Follow the garment care label",
     sizes: product.sizes ?? ["XS", "S", "M", "L", "XL"],
   };
+}
+
+export function withCustomerPrice(product: Product, wholesale: boolean): StoreProduct {
+  const view = toStoreProduct(product);
+  const variants = (product.variants ?? []).filter(variant => variant.isActive);
+  const prices = variants.map(variant => wholesale ? variant.wholesalePrice : (variant.retailPrice ?? product.price)).filter((price): price is number => price != null && Number.isFinite(price));
+  const displayPrice = wholesale ? (prices.length ? Math.min(...prices) : null) : (prices.length ? Math.min(...prices) : product.price);
+  return { ...view, displayPrice };
+}
+
+export function customerUnitPrice(product: Product, variantId: string, wholesale: boolean): number | null {
+  const variant = product.variants?.find(item => item.id === variantId);
+  if (!variant) return wholesale ? null : product.price;
+  if (wholesale) return variant.wholesalePrice ?? null;
+  return variant.retailPrice ?? product.price;
+}
+
+export function customerPriceLabel(product: StoreProduct, wholesale: boolean): string {
+  const price = product.displayPrice;
+  if (price == null) return wholesale ? 'Wholesale pricing on request' : `$${product.price.toFixed(2)}`;
+  return `${wholesale ? 'Wholesale from' : 'From'} $${price.toFixed(2)}`;
 }

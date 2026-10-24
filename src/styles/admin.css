@@ -439,6 +439,266 @@
   display: none;
 }
 
+.dairi-line-sheet-print-root {
+  display: none;
+}
+
+.dairi-template-page {
+  background: #fbfaf8;
+  box-sizing: border-box;
+  color: #111;
+  display: flex;
+  flex-direction: column;
+  font-family: Arial, Helvetica, sans-serif;
+  height: 297mm;
+  padding: 12mm 10mm 8mm;
+  width: 210mm;
+}
+
+.dairi-template-header {
+  align-items: center;
+  border-bottom: 1px solid #bbb;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 9pt;
+  justify-content: space-between;
+  padding: 0 0 3mm;
+  text-transform: uppercase;
+}
+
+.dairi-template-title {
+  font-size: 10pt;
+  font-weight: 500;
+}
+
+.dairi-template-products {
+  align-content: space-between;
+  display: grid;
+  flex: 1 1 auto;
+  gap: 6mm 8mm;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  min-height: 0;
+  padding: 5mm 0 7mm;
+}
+
+.dairi-template-product {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dairi-template-product-image {
+  aspect-ratio: 1 / 1;
+  background: #eeecea;
+  overflow: hidden;
+  width: 100%;
+}
+
+.dairi-image-unavailable {
+  align-items: center;
+  background: #eeecea;
+  color: #5b5752;
+  display: flex;
+  font-size: 8pt;
+  height: 100%;
+  justify-content: center;
+  overflow: hidden;
+  padding: 2mm;
+  text-align: center;
+  width: 100%;
+}
+
+.dairi-template-product > p {
+  font-size: 11pt;
+  line-height: 1.15;
+  margin-top: 2mm;
+  overflow-wrap: anywhere;
+}
+
+.dairi-template-footer {
+  align-items: flex-end;
+  border-top: 1px solid #bbb;
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 7pt;
+  font-weight: 600;
+  justify-content: space-between;
+  line-height: 1.5;
+  padding-top: 3mm;
+}
+
+.dairi-cover-brand {
+  align-items: flex-start;
+  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 35%;
+  flex-direction: column;
+  gap: 8mm;
+  justify-content: center;
+  padding: 12mm 15mm;
+  text-align: left;
+}
+
+.dairi-cover-brand img {
+  max-height: 30mm;
+  max-width: 80mm;
+  object-fit: contain;
+}
+
+.dairi-cover-brand h1 {
+  font-size: 28pt;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dairi-cover-image {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.dairi-template-cover {
+  padding: 0;
+}
+
+.dairi-cover-caption {
+  align-items: center;
+  bottom: 8mm;
+  color: white;
+  display: flex;
+  font-size: 8pt;
+  justify-content: space-between;
+  left: 15mm;
+  position: absolute;
+  right: 15mm;
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.75);
+  text-transform: uppercase;
+}
+
+.dairi-template-contact {
+  justify-content: center;
+  padding: 18mm;
+  text-align: center;
+}
+
+.dairi-contact-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16mm;
+}
+
+.dairi-contact-logo img,
+.dairi-template-back-cover > img {
+  max-height: 38mm;
+  max-width: 85mm;
+  object-fit: contain;
+}
+
+.dairi-contact-details {
+  font-size: 10pt;
+  line-height: 1.8;
+}
+
+.dairi-template-back-cover {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.dairi-template-back-cover > img {
+  margin-bottom: 12mm;
+}
+
+.dairi-template-back-cover > div {
+  font-size: 9pt;
+  line-height: 1.7;
+}
+
+.dairi-cover-image > div:not([class]) {
+  align-items: center;
+  background: #eeecea;
+  display: flex;
+  height: 100%;
+  justify-content: center;
+  letter-spacing: 0.2em;
+}
+
+.dairi-template-cover .dairi-template-footer {
+  margin-top: 7mm;
+}
+
+.dairi-price-grid {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(6, minmax(0, 1fr));
+  min-height: 0;
+  padding: 3mm 0 5mm;
+}
+
+.dairi-price-group {
+  border-bottom: 1px solid #ddd;
+  min-width: 0;
+  padding: 2mm 3mm 1.5mm 0;
+}
+
+.dairi-price-group:nth-child(odd) {
+  border-right: 1px solid #ccc;
+  padding-right: 4mm;
+}
+
+.dairi-price-group:nth-child(even) {
+  padding-left: 4mm;
+}
+
+.dairi-price-group h2 {
+  font-size: 8pt;
+  font-weight: 600;
+  margin-bottom: 1.5mm;
+  text-transform: uppercase;
+}
+
+.dairi-price-group table {
+  border-collapse: collapse;
+  font-size: 6.8pt;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.dairi-price-group th,
+.dairi-price-group td {
+  line-height: 1.25;
+  overflow: hidden;
+  padding: 0.35mm 1mm 0.35mm 0;
+  text-align: left;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+.dairi-price-group th {
+  font-size: 6pt;
+  font-weight: 500;
+}
+
+.dairi-price-group th:nth-child(2n),
+.dairi-price-group td:nth-child(2n) {
+  width: 22mm;
+}
+
+@media screen {
+  .admin-page .dairi-template-page {
+    aspect-ratio: 210 / 297;
+    height: auto;
+    width: 100%;
+  }
+
+  .admin-page .dairi-template-cover {
+    padding: 0;
+  }
+}
+
 @keyframes admin-page-in {
   from {
     opacity: 0;
@@ -456,12 +716,40 @@
     size: A4;
   }
 
+  body:not(.dairi-line-sheet-mode) > #root,
+  body:not(.dairi-line-sheet-mode) > #root > .admin-shell,
+  body:not(.dairi-line-sheet-mode) > #root > .admin-shell > .admin-workspace,
+  body:not(.dairi-line-sheet-mode) > #root > .admin-shell > .admin-workspace > .admin-main,
+  body:not(.dairi-line-sheet-mode) > #root > .admin-shell > .admin-workspace > .admin-main > .admin-page,
+  body.dairi-line-sheet-mode > #root,
+  body.dairi-line-sheet-mode > #root > .admin-shell,
+  body.dairi-line-sheet-mode > #root > .admin-shell > .admin-workspace,
+  body.dairi-line-sheet-mode > #root > .admin-shell > .admin-workspace > .admin-main,
+  body.dairi-line-sheet-mode > #root > .admin-shell > .admin-workspace > .admin-main > .admin-page {
+    display: contents !important;
+  }
+
+  body > *:not(#root) {
+    display: none !important;
+  }
+
+  .admin-sidebar,
+  .admin-topbar,
+  .admin-page > *:not(.lookbook-print-root):not(.dairi-line-sheet-print-root) {
+    display: none !important;
+  }
+
   body * {
     visibility: hidden;
   }
 
-  .lookbook-print-root,
-  .lookbook-print-root * {
+  body:not(.dairi-line-sheet-mode) .lookbook-print-root,
+  body:not(.dairi-line-sheet-mode) .lookbook-print-root * {
+    visibility: visible;
+  }
+
+  body.dairi-line-sheet-mode .dairi-line-sheet-print-root,
+  body.dairi-line-sheet-mode .dairi-line-sheet-print-root * {
     visibility: visible;
   }
 
@@ -477,12 +765,46 @@
   .lookbook-print-root .lookbook-catalog-page {
     aspect-ratio: auto;
     box-sizing: border-box;
+    break-inside: avoid-page;
     height: 297mm;
     page-break-after: always;
+    page-break-inside: avoid;
     width: 210mm;
   }
 
+  .lookbook-print-root .lookbook-cover-page {
+    overflow: hidden;
+    position: relative;
+  }
+
+  .lookbook-print-root .lookbook-cover-masthead {
+    flex: 0 0 28%;
+  }
+
+  .lookbook-print-root .lookbook-cover-image {
+    flex: 1 1 auto;
+    min-height: 0;
+    position: relative;
+  }
+
   .lookbook-print-root .lookbook-catalog-page:last-child {
+    page-break-after: auto;
+  }
+
+  .dairi-line-sheet-print-root.is-printing {
+    background: #fbfaf8;
+    display: block !important;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 210mm;
+  }
+
+  .dairi-line-sheet-print-root .dairi-template-page {
+    page-break-after: always;
+  }
+
+  .dairi-line-sheet-print-root .dairi-template-page:last-child {
     page-break-after: auto;
   }
 }

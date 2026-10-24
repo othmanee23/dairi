@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router';
 import { Button } from '../../components/ui/button';
 import { ArrowLeft, BookOpen, Pencil, Trash2 } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import { toast } from 'sonner';
 
 export function CollectionDetail() {
   const { id } = useParams();
@@ -13,6 +14,15 @@ export function CollectionDetail() {
   const collectionProducts = products.filter(
     p => p.collection === collection?.name
   );
+
+  const handleDelete = async () => {
+    try {
+      await deleteCollection(collection.id);
+      navigate('/collections');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not delete collection');
+    }
+  };
 
   if (!collection) {
     return (
@@ -64,7 +74,7 @@ export function CollectionDetail() {
                 <BookOpen className="w-4 h-4 mr-2" />
                 Create Lookbook
               </Button>
-              <Button variant="outline" onClick={() => { if (window.confirm(`Delete ${collection.name}? Products will remain in the catalog without a collection.`)) { deleteCollection(collection.id); navigate('/collections'); } }} className="rounded-none h-12 px-5 text-red-700"><Trash2 className="w-4 h-4 mr-2" />Delete</Button>
+              <Button variant="outline" onClick={() => { if (window.confirm(`Delete ${collection.name}? Products will remain in the catalog without a collection.`)) void handleDelete(); }} className="rounded-none h-12 px-5 text-red-700"><Trash2 className="w-4 h-4 mr-2" />Delete</Button>
               <p className="text-sm text-neutral-600">
                 {collectionProducts.length} products in this collection
               </p>
