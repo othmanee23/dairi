@@ -111,7 +111,7 @@ export function ProductsList() {
             <p className="text-neutral-600">{filteredProducts.length} products</p>
           </div>
           <Button
-            onClick={() => navigate('/products/new')}
+            onClick={() => navigate('/admin/products/new')}
             className="admin-button bg-black text-white hover:bg-neutral-800 rounded-none h-12 px-6"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -227,7 +227,7 @@ export function ProductsList() {
               <div key={product.id} className="admin-card group relative p-3">
                 <div
                   className="cursor-pointer"
-                  onClick={() => navigate(`/products/${product.id}/edit`)}
+                  onClick={() => navigate(`/admin/products/${product.id}/edit`)}
                 >
                   <div className="aspect-[3/4] bg-neutral-100 mb-3 overflow-hidden relative">
                     <ImageWithFallback
@@ -305,7 +305,7 @@ export function ProductsList() {
                   <tr
                     key={product.id}
                     className="hover:bg-neutral-50 cursor-pointer"
-                    onClick={() => navigate(`/products/${product.id}/edit`)}
+                    onClick={() => navigate(`/admin/products/${product.id}/edit`)}
                   >
                     <td className="p-4" onClick={(e) => e.stopPropagation()}>
                       <Checkbox

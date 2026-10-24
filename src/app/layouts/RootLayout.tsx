@@ -20,13 +20,13 @@ import dairiLogo from "../../imports/dairi-logo.svg";
 import { CatalogStatusBanner } from "../components/store/CatalogStatusBanner";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Products", href: "/products", icon: Package },
-  { name: "Collections", href: "/collections", icon: Layers },
-  { name: "Lookbooks", href: "/lookbooks", icon: BookOpen },
-  { name: "Client activity", href: "/activity", icon: MessageCircle },
-  { name: "Wholesale applications", href: "/wholesale-applications", icon: ClipboardCheck },
-  { name: "Settings", href: "/settings", icon: SettingsIcon },
+  { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+  { name: "Products", href: "/admin/products", icon: Package },
+  { name: "Collections", href: "/admin/collections", icon: Layers },
+  { name: "Lookbooks", href: "/admin/lookbooks", icon: BookOpen },
+  { name: "Client activity", href: "/admin/activity", icon: MessageCircle },
+  { name: "Wholesale applications", href: "/admin/wholesale-applications", icon: ClipboardCheck },
+  { name: "Settings", href: "/admin/settings", icon: SettingsIcon },
 ];
 
 export function RootLayout() {
@@ -56,7 +56,7 @@ export function RootLayout() {
   if (!authReady || !isAuthenticated) return null;
 
   const currentPage = navigation.find((item) =>
-    item.href === "/" ? location.pathname === "/" : location.pathname.startsWith(item.href)
+    item.href === "/admin" ? location.pathname === "/admin" : location.pathname.startsWith(item.href)
   )?.name ?? "Admin Studio";
 
   const handleLogout = async () => {
@@ -85,7 +85,7 @@ export function RootLayout() {
 
       <aside id="admin-navigation-panel" role={mobileNavOpen ? "dialog" : undefined} aria-label="Admin navigation panel" aria-modal={mobileNavOpen || undefined} className={`admin-sidebar fixed inset-y-0 left-0 z-50 flex w-[264px] flex-col border-r transition-transform duration-300 lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${mobileNavOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="admin-brand flex h-[104px] items-center border-b px-7">
-          <Link to="/" aria-label="DAIRI Admin home" className="block w-[150px]">
+          <Link to="/admin" aria-label="DAIRI Admin home" className="block w-[150px]">
             <img src={dairiLogo} alt="DAIRI" className="block h-auto w-full" />
           </Link>
           <button
@@ -102,7 +102,7 @@ export function RootLayout() {
           <p className="admin-nav-label mb-3 px-3">Workspace</p>
           <ul className="space-y-1">
             {navigation.map((item) => {
-              const isActive = item.href === "/" ? location.pathname === "/" : location.pathname.startsWith(item.href);
+              const isActive = item.href === "/admin" ? location.pathname === "/admin" : location.pathname.startsWith(item.href);
               return (
                 <li key={item.name}>
                   <Link to={item.href} aria-current={isActive ? "page" : undefined} className={`admin-nav-link group flex h-11 items-center gap-3 px-3 text-sm ${isActive ? "is-active" : ""}`}>

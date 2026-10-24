@@ -19,7 +19,7 @@ export function CollectionsList() {
             <p className="text-neutral-600">{collections.length} collections</p>
           </div>
           <Button
-            onClick={() => navigate('/collections/new')}
+            onClick={() => navigate('/admin/collections/new')}
             className="admin-button bg-black text-white hover:bg-neutral-800 rounded-none h-12 px-6"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -38,7 +38,7 @@ export function CollectionsList() {
               <div
                 key={collection.id}
                 className="admin-card group cursor-pointer p-3"
-                onClick={() => navigate(`/collections/${collection.id}`)}
+                onClick={() => navigate(`/admin/collections/${collection.id}`)}
               >
                 <div className="aspect-[4/5] bg-neutral-100 mb-4 overflow-hidden">
                   <ImageWithFallback

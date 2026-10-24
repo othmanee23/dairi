@@ -251,7 +251,7 @@ export function LookbookPreview() {
       <div className="admin-page p-8 lg:p-10">
         <div className="max-w-7xl mx-auto text-center py-16">
           <p className="text-neutral-600">Lookbook not found</p>
-          <Link to="/lookbooks" className="text-sm underline mt-4 inline-block">
+          <Link to="/admin/lookbooks" className="text-sm underline mt-4 inline-block">
             Back to lookbooks
           </Link>
         </div>
@@ -297,7 +297,7 @@ export function LookbookPreview() {
     <div className="admin-page p-8 lg:p-10">
       <div className="max-w-5xl mx-auto">
         <Link
-          to="/lookbooks"
+          to="/admin/lookbooks"
           className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-black mb-8 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />

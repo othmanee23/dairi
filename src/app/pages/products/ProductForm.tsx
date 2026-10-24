@@ -115,7 +115,7 @@ export function ProductForm() {
         await addProduct(product);
         toast.success('Product created successfully');
       }
-      navigate('/products');
+      navigate('/admin/products');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not save product');
     }
@@ -161,7 +161,7 @@ export function ProductForm() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <Link
-          to="/products"
+          to="/admin/products"
           className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-black mb-8 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -410,7 +410,7 @@ export function ProductForm() {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate('/products')}
+              onClick={() => navigate('/admin/products')}
               className="border-neutral-300 rounded-none h-12 px-8"
             >
               Cancel

@@ -36,6 +36,10 @@ const Settings = lazy(() => import('./pages/settings/Settings').then(module => (
 
 export const router = createBrowserRouter([
   {
+    path: '/',
+    Component: StoreFront,
+  },
+  {
     path: '/store',
     Component: StoreFront,
   },
@@ -86,7 +90,7 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    path: '/',
+    path: '/admin',
     Component: RootLayout,
     children: [
       { index: true, Component: Dashboard },

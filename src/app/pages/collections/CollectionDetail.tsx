@@ -18,7 +18,7 @@ export function CollectionDetail() {
   const handleDelete = async () => {
     try {
       await deleteCollection(collection.id);
-      navigate('/collections');
+      navigate('/admin/collections');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not delete collection');
     }
@@ -39,7 +39,7 @@ export function CollectionDetail() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <Link
-          to="/collections"
+          to="/admin/collections"
           className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-black mb-8 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -66,9 +66,9 @@ export function CollectionDetail() {
               {collection.description}
             </p>
             <div className="flex items-center gap-4">
-              <Button variant="outline" onClick={() => navigate(`/collections/${collection.id}/edit`)} className="rounded-none h-12 px-5"><Pencil className="w-4 h-4 mr-2" />Edit</Button>
+              <Button variant="outline" onClick={() => navigate(`/admin/collections/${collection.id}/edit`)} className="rounded-none h-12 px-5"><Pencil className="w-4 h-4 mr-2" />Edit</Button>
               <Button
-                onClick={() => navigate('/lookbooks')}
+                onClick={() => navigate('/admin/lookbooks')}
                 className="bg-black text-white hover:bg-neutral-800 rounded-none h-12 px-6"
               >
                 <BookOpen className="w-4 h-4 mr-2" />
@@ -90,7 +90,7 @@ export function CollectionDetail() {
               <div
                 key={product.id}
                 className="group cursor-pointer"
-                onClick={() => navigate(`/products/${product.id}/edit`)}
+                onClick={() => navigate(`/admin/products/${product.id}/edit`)}
               >
                 <div className="aspect-[3/4] bg-neutral-100 mb-3 overflow-hidden">
                   <ImageWithFallback

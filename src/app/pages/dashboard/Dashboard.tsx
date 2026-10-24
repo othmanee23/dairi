@@ -81,21 +81,21 @@ export function Dashboard() {
 
         <div className="mb-12 flex flex-wrap gap-3">
           <button
-            onClick={() => navigate("/products/new")}
+            onClick={() => navigate("/admin/products/new")}
             className="admin-button inline-flex h-12 items-center gap-2 bg-black px-6 text-xs uppercase tracking-[2px] text-white hover:bg-neutral-800"
           >
             <Plus className="h-4 w-4" />
             Add Product
           </button>
           <button
-            onClick={() => navigate("/lookbooks")}
+            onClick={() => navigate("/admin/lookbooks")}
             className="admin-button inline-flex h-12 items-center gap-2 border border-black/20 bg-white px-6 text-xs uppercase tracking-[2px] text-black hover:border-black hover:bg-black hover:text-white"
           >
             <BookOpen className="h-4 w-4" />
             Generate Lookbook
           </button>
           <button
-            onClick={() => navigate("/collections")}
+            onClick={() => navigate("/admin/collections")}
             className="admin-button inline-flex h-12 items-center gap-2 border border-black/20 bg-white px-6 text-xs uppercase tracking-[2px] text-black hover:border-black hover:bg-black hover:text-white"
           >
             <Layers className="h-4 w-4" />
@@ -110,7 +110,7 @@ export function Dashboard() {
               <h2 className="text-2xl font-medium tracking-tight text-black">Recent Products</h2>
             </div>
             <button
-              onClick={() => navigate("/products")}
+              onClick={() => navigate("/admin/products")}
               className="admin-button inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[2px] text-black/55 hover:text-black"
             >
               View All <ArrowRight className="h-3 w-3" />
@@ -146,7 +146,7 @@ export function Dashboard() {
               <h2 className="text-2xl font-medium tracking-tight text-black">Collections</h2>
             </div>
             <button
-              onClick={() => navigate("/collections")}
+              onClick={() => navigate("/admin/collections")}
               className="admin-button inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[2px] text-black/55 hover:text-black"
             >
               View All <ArrowRight className="h-3 w-3" />

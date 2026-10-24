@@ -22,7 +22,7 @@ export function Login() {
     if (submitting) return;
     setError("");
     setSubmitting(true);
-    try { await login(email.trim().toLowerCase(), password); navigate("/", { replace: true }); }
+    try { await login(email.trim().toLowerCase(), password); navigate("/admin", { replace: true }); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Sign-in failed. Please try again."); }
     finally { setSubmitting(false); }
   };

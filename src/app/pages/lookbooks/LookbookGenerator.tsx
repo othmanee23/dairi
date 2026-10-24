@@ -155,7 +155,7 @@ function LookbookGeneratorContent() {
 
     try {
       await addLookbook(lookbook);
-      navigate(`/lookbooks/${lookbook.id}/preview`);
+      navigate(`/admin/lookbooks/${lookbook.id}/preview`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not save lookbook');
     }

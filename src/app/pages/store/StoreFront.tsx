@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import heroImage from "../../../imports/image.webp";
@@ -156,7 +156,8 @@ function OpeningLoader({ leaving }: { leaving: boolean }) {
 
 export function StoreFront() {
   const { products, customerAccount } = useApp();
-  usePageSeo({ title: 'DAIRI | Contemporary Women’s Fashion', description: 'Discover contemporary women’s clothing, new arrivals, and handcrafted collections from the DAIRI fashion studio.', path: '/store' });
+  const location = useLocation();
+  usePageSeo({ title: 'DAIRI | Contemporary Women’s Fashion', description: 'Discover contemporary women’s clothing, new arrivals, and handcrafted collections from the DAIRI fashion studio.', path: location.pathname });
   const wholesale = customerAccount?.wholesaleStatus === 'approved';
   const spotlightProducts = products.filter(p => p.status === "published" && p.showOnWebsite).map(product => withCustomerPrice(product, wholesale));
   const featuredProducts = spotlightProducts.filter(p => p.isNew || p.isBestseller).slice(0, 5);
