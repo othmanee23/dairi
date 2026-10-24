@@ -630,10 +630,10 @@
 }
 
 .dairi-price-grid {
-  display: grid;
+  display: flex;
   flex: 1 1 auto;
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  flex-direction: column;
+  gap: 5mm;
   min-height: 0;
   padding: 3mm 0 5mm;
 }
@@ -649,15 +649,15 @@
 }
 
 .dairi-price-group h2 {
-  font-size: 8pt;
+  font-size: 9pt;
   font-weight: 600;
-  margin-bottom: 1.5mm;
+  margin-bottom: 2mm;
   text-transform: uppercase;
 }
 
 .dairi-price-group table {
   border-collapse: collapse;
-  font-size: 6.8pt;
+  font-size: 8.5pt;
   table-layout: fixed;
   width: 100%;
 }
@@ -673,7 +673,7 @@
 }
 
 .dairi-price-group th {
-  font-size: 6pt;
+  font-size: 7pt;
   font-weight: 500;
 }
 
