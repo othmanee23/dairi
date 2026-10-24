@@ -632,8 +632,8 @@
 .dairi-price-grid {
   display: grid;
   flex: 1 1 auto;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-rows: repeat(6, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: repeat(2, minmax(0, 1fr));
   min-height: 0;
   padding: 3mm 0 5mm;
 }
@@ -641,16 +641,11 @@
 .dairi-price-group {
   border-bottom: 1px solid #ddd;
   min-width: 0;
-  padding: 2mm 3mm 1.5mm 0;
+  padding: 2mm 0 1.5mm;
 }
 
-.dairi-price-group:nth-child(odd) {
-  border-right: 1px solid #ccc;
-  padding-right: 4mm;
-}
-
-.dairi-price-group:nth-child(even) {
-  padding-left: 4mm;
+.dairi-price-group:last-child {
+  border-bottom: 0;
 }
 
 .dairi-price-group h2 {

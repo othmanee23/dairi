@@ -31,11 +31,11 @@ export function buildDairiLineSheetPages(products: Product[]): DairiLineSheetPag
   });
 }
 
-/** The supplied template prints up to twelve product-page price blocks per appendix sheet. */
+/** Two full-width product-page price blocks fit on each appendix sheet. */
 export function splitPriceListPages(pages: DairiLineSheetPage[]): DairiPriceListGroup[][] {
   const groups = pages.map((page, index) => ({ pageNumber: index + 1, products: page.products }));
   const result: DairiPriceListGroup[][] = [];
-  for (let index = 0; index < groups.length; index += 12) result.push(groups.slice(index, index + 12));
+  for (let index = 0; index < groups.length; index += 2) result.push(groups.slice(index, index + 2));
   return result;
 }
 

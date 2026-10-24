@@ -218,9 +218,10 @@ function DairiPricePage({ pageNumber, groups, productIndexes }: { pageNumber: nu
   return <div className="dairi-template-page dairi-template-price-page">
     <header className="dairi-template-header"><div className="dairi-template-title">PRICE LIST</div><div>PAGE-{pageNumber}</div></header>
     <main className="dairi-price-grid">{groups.map(group => <section className="dairi-price-group" key={group.pageNumber}>
-      <h2>PAGE {group.pageNumber}</h2><table><thead><tr><th>ITEM ID</th><th>PRICE</th><th>ITEM ID</th><th>PRICE</th></tr></thead>
-        <tbody>{Array.from({ length: Math.ceil(group.products.length / 2) }, (_, row) => <tr key={row}>
-          {[group.products[row * 2], group.products[row * 2 + 1]].flatMap(product => product ? [<td key={`${product.id}-sku`}>{getCatalogNumber(product, productIndexes.get(product.id) ?? row)}</td>, <td key={`${product.id}-price`}>{formatDairiPrice(product.price)}</td>] : [<td key={`empty-${group.pageNumber}-${row}-sku`} />, <td key={`empty-${group.pageNumber}-${row}-price`} />])}
+      <h2>PAGE {group.pageNumber}</h2><table><thead><tr><th>ITEM ID</th><th>PRICE</th></tr></thead>
+        <tbody>{group.products.map((product, index) => <tr key={product.id}>
+          <td>{getCatalogNumber(product, productIndexes.get(product.id) ?? index)}</td>
+          <td>{formatDairiPrice(product.price)}</td>
         </tr>)}</tbody></table>
     </section>)}</main>
     <DairiFooter />
