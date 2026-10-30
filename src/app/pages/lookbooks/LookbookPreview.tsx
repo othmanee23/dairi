@@ -183,7 +183,7 @@ function DairiProductPage({ title, pageNumber, products, productIndexes }: { tit
   return <div className="dairi-template-page">
     <header className="dairi-template-header"><div className="dairi-template-title">{title}</div><div>PAGE-{pageNumber}</div></header>
     <main className="dairi-template-products">{products.map((product, index) => <article className="dairi-template-product" key={product.id}>
-      <div className="dairi-template-product-image"><DairiPrintImage src={product.images[0]} alt={product.name} fit="cover" /></div>
+      <div className="dairi-template-product-image"><DairiPrintImage src={product.images[0]} alt={product.name} fit="contain" /></div>
       <p>{getCatalogNumber(product, productIndexes.get(product.id) ?? index)}</p>
     </article>)}</main>
     <DairiFooter />
