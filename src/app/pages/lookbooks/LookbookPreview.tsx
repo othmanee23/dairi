@@ -49,6 +49,8 @@ async function waitForPrintImages(selector: string) {
       });
     }));
   }
+  await Promise.all([400, 500, 600, 700].map((weight) => document.fonts.load(`${weight} 12pt "Inter Display"`)));
+  await document.fonts.ready;
   await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
 }
 

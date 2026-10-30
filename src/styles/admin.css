@@ -443,13 +443,45 @@
   display: none;
 }
 
+@font-face {
+  font-family: "Inter Display";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/inter-display/InterDisplay-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter Display";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/inter-display/InterDisplay-Medium.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter Display";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/inter-display/InterDisplay-SemiBold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter Display";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/inter-display/InterDisplay-Bold.woff2") format("woff2");
+}
+
 .dairi-template-page {
   background: #fbfaf8;
   box-sizing: border-box;
   color: #111;
   display: flex;
   flex-direction: column;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Inter Display", Inter, sans-serif;
   height: 297mm;
   padding: 12mm 10mm 8mm;
   width: 210mm;
