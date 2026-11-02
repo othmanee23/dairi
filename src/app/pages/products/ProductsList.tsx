@@ -25,26 +25,27 @@ import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { toast } from 'sonner';
 
 type ViewMode = 'grid' | 'table';
+const ALL_FILTERS = '__all__';
 
 export function ProductsList() {
   const { products, deleteProducts, updateProduct } = useApp();
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [collectionFilter, setCollectionFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState(ALL_FILTERS);
+  const [collectionFilter, setCollectionFilter] = useState(ALL_FILTERS);
+  const [statusFilter, setStatusFilter] = useState(ALL_FILTERS);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
 
   // Get unique categories and collections
   const categories = useMemo(() => {
-    const cats = new Set(products.map(p => p.category));
-    return ['all', ...Array.from(cats)];
+    const cats = new Set(products.map(p => p.category?.trim()).filter((category): category is string => Boolean(category)));
+    return Array.from(cats).sort((a, b) => a.localeCompare(b));
   }, [products]);
 
   const collections = useMemo(() => {
-    const cols = new Set(products.map(p => p.collection));
-    return ['all', ...Array.from(cols)];
+    const cols = new Set(products.map(p => p.collection?.trim()).filter((collection): collection is string => Boolean(collection)));
+    return Array.from(cols).sort((a, b) => a.localeCompare(b));
   }, [products]);
 
   // Filter products
@@ -54,9 +55,9 @@ export function ProductsList() {
         (product.styleNumber ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.variants?.some(variant => variant.sku.toLowerCase().includes(searchQuery.toLowerCase())) ||
         product.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
-      const matchesCollection = collectionFilter === 'all' || product.collection === collectionFilter;
-      const matchesStatus = statusFilter === 'all' || product.status === statusFilter;
+      const matchesCategory = categoryFilter === ALL_FILTERS || product.category?.trim() === categoryFilter.slice('category:'.length);
+      const matchesCollection = collectionFilter === ALL_FILTERS || product.collection?.trim() === collectionFilter.slice('collection:'.length);
+      const matchesStatus = statusFilter === ALL_FILTERS || product.status === statusFilter;
       
       return matchesSearch && matchesCategory && matchesCollection && matchesStatus;
     });
@@ -137,9 +138,10 @@ export function ProductsList() {
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={ALL_FILTERS}>All Categories</SelectItem>
                 {categories.map(cat => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat === 'all' ? 'All Categories' : cat}
+                  <SelectItem key={cat} value={`category:${cat}`}>
+                    {cat}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -150,9 +152,10 @@ export function ProductsList() {
                 <SelectValue placeholder="Collection" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={ALL_FILTERS}>All Collections</SelectItem>
                 {collections.map(col => (
-                  <SelectItem key={col} value={col}>
-                    {col === 'all' ? 'All Collections' : col}
+                  <SelectItem key={col} value={`collection:${col}`}>
+                    {col}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -163,7 +166,7 @@ export function ProductsList() {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value={ALL_FILTERS}>All Status</SelectItem>
                 <SelectItem value="published">Published</SelectItem>
                 <SelectItem value="draft">Draft</SelectItem>
               </SelectContent>

@@ -288,7 +288,10 @@ export function ProductForm() {
                   <SelectValue placeholder="Select collection" />
                 </SelectTrigger>
                 <SelectContent>
-                  {collections.map(collection => <SelectItem key={collection.id} value={collection.name}>{collection.name}</SelectItem>)}
+                  {collections.filter(collection => collection.name?.trim()).map(collection => {
+                    const name = collection.name.trim();
+                    return <SelectItem key={collection.id} value={name}>{name}</SelectItem>;
+                  })}
                 </SelectContent>
               </Select>
             </div>

@@ -34,7 +34,21 @@ const LookbookGenerator = lazy(() => import('./pages/lookbooks/LookbookGenerator
 const LookbookPreview = lazy(() => import('./pages/lookbooks/LookbookPreview').then(module => ({ default: module.LookbookPreview })));
 const Settings = lazy(() => import('./pages/settings/Settings').then(module => ({ default: module.Settings })));
 
-export const router = createBrowserRouter([
+function RouteErrorFallback() {
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center bg-[#fbfaf8] px-6 text-center text-[#171717]">
+      <p className="mb-4 text-xs uppercase tracking-[0.24em] text-black/45">DAIRI</p>
+      <h1 className="text-2xl font-medium">This page couldn’t be loaded</h1>
+      <p className="mt-3 max-w-md text-sm text-black/60">Please try again. If the problem continues, return to the storefront.</p>
+      <div className="mt-7 flex gap-3">
+        <button type="button" onClick={() => window.location.reload()} className="border border-black px-5 py-3 text-xs uppercase tracking-wider">Try again</button>
+        <a href="/" className="bg-black px-5 py-3 text-xs uppercase tracking-wider text-white">Go to storefront</a>
+      </div>
+    </main>
+  );
+}
+
+const appRoutes = [
   {
     path: '/',
     Component: StoreFront,
@@ -107,5 +121,12 @@ export const router = createBrowserRouter([
       { path: 'lookbooks/:id/preview', Component: LookbookPreview },
       { path: 'settings', Component: Settings },
     ],
+  },
+];
+
+export const router = createBrowserRouter([
+  {
+    errorElement: <RouteErrorFallback />,
+    children: appRoutes,
   },
 ]);

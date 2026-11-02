@@ -296,9 +296,9 @@ function LookbookGeneratorContent() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Collections</SelectItem>
-                    {collections.map(col => (
-                      <SelectItem key={col.id} value={col.name}>
-                        {col.name}
+                    {collections.filter(col => col.name?.trim()).map(col => (
+                      <SelectItem key={col.id} value={col.name.trim()}>
+                        {col.name.trim()}
                       </SelectItem>
                     ))}
                   </SelectContent>
