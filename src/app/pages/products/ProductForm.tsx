@@ -22,7 +22,7 @@ import defaultProductImage from '../../../imports/image-1.webp';
 
 export function ProductForm() {
   const { id } = useParams();
-  const { products, collections, addProduct, updateProduct } = useApp();
+  const { products, collections, addProduct, updateProduct, catalogLoadStatus } = useApp();
   const navigate = useNavigate();
   const isEditing = !!id;
 
@@ -56,10 +56,10 @@ export function ProductForm() {
         category: existingProduct.category,
         collection: existingProduct.collection,
         description: existingProduct.description,
-        tags: existingProduct.tags.join(', '),
+        tags: (existingProduct.tags ?? []).join(', '),
         status: existingProduct.status,
         showOnWebsite: existingProduct.showOnWebsite,
-        images: existingProduct.images,
+        images: existingProduct.images ?? [],
         material: existingProduct.material ?? '',
         fit: existingProduct.fit ?? '',
         care: existingProduct.care ?? '',
@@ -155,6 +155,14 @@ export function ProductForm() {
       images: prev.images.filter((_, i) => i !== index),
     }));
   };
+
+  if (isEditing && !existingProduct && catalogLoadStatus === 'loading') {
+    return <div className="admin-page p-8 lg:p-10"><div className="mx-auto max-w-4xl py-20 text-center text-sm text-neutral-600" role="status">Loading product…</div></div>;
+  }
+
+  if (isEditing && !existingProduct) {
+    return <div className="admin-page p-8 lg:p-10"><div className="mx-auto max-w-4xl py-16"><Link to="/admin/products" className="text-sm underline">← Back to products</Link><h1 className="mt-6 text-3xl">Product not found</h1><p className="mt-3 text-sm text-neutral-600">This product may have been removed or is unavailable in the current catalog.</p></div></div>;
+  }
 
   return (
     <div className="admin-page p-8 lg:p-10">

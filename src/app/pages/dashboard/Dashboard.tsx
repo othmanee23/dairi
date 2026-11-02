@@ -122,7 +122,7 @@ export function Dashboard() {
               <button
                 key={product.id}
                 className="admin-card group cursor-pointer p-3 text-left"
-                onClick={() => navigate(`/products/${product.id}/edit`)}
+                onClick={() => navigate(`/admin/products/${product.id}/edit`)}
               >
                 <div className="relative mb-3 aspect-[3/4] overflow-hidden bg-neutral-100">
                   <ImageWithFallback

@@ -24,7 +24,7 @@ export function CloseoutSale() {
           <div className="grid grid-cols-2 gap-5 md:grid-cols-3 lg:grid-cols-4">
             {items.map(product => (
               <Link key={product.id} to={`/store/products/${product.id}`} className="store-card group block">
-                <div className="mb-4 aspect-[4/5] overflow-hidden bg-[#f5f5f5]">
+                <div className="mb-4 aspect-[3/4] overflow-hidden bg-[#f5f5f5]">
                   <img src={product.image} alt={product.name} className="h-full w-full object-cover object-top transition-transform duration-500 group-hover:scale-[1.02]" />
                 </div>
                 <p className="text-sm font-medium">{product.name}</p>

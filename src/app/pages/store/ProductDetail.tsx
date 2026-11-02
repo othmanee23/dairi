@@ -12,7 +12,7 @@ import { ProductVariant } from "../../types";
 function MiniProduct({ product, wholesale }: { product: StoreProduct; wholesale: boolean }) {
   return (
     <Link to={`/store/products/${product.id}`} className="store-card group block">
-      <div className="relative aspect-[4/5] bg-[#f6f6f6] overflow-hidden mb-3">
+      <div className="relative aspect-[3/4] bg-[#f6f6f6] overflow-hidden mb-3">
         <img src={product.image} alt={product.name} className="h-full w-full object-cover object-top" />
         <span className="absolute right-3 bottom-2 text-xl">+</span>
       </div>
@@ -108,11 +108,11 @@ export function ProductDetail() {
         <section className="px-6 lg:px-10 py-10 grid grid-cols-1 lg:grid-cols-[minmax(0,1.65fr)_minmax(300px,.72fr)] gap-10">
           <div className="grid gap-4">
             {imageSet.map((image, index) => (
-              <div key={index} className="bg-[#f5f5f5] overflow-hidden">
+              <div key={index} className="aspect-[3/4] w-full overflow-hidden bg-[#f5f5f5]">
                 <img
                   src={image}
                   alt={`${product.name} view ${index + 1}`}
-                  className="w-full h-full max-h-[760px] object-cover object-top"
+                  className="block h-full w-full object-cover object-top"
                 />
               </div>
             ))}

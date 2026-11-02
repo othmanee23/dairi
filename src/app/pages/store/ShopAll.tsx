@@ -17,7 +17,7 @@ function ShopProductCard({ product }: { product: StoreProduct }) {
 
   return (
     <Link to={`/store/products/${product.id}`} className="store-card group block">
-      <div className="relative aspect-[4/5] bg-[#f6f6f6] overflow-hidden mb-4">
+      <div className="relative aspect-[3/4] bg-[#f6f6f6] overflow-hidden mb-4">
         <img
           src={product.image}
           alt={product.name}

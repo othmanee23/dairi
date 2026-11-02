@@ -140,7 +140,7 @@ interface AppContextType {
   retryOrderEmails: (orderNumber: string) => Promise<{ confirmation: string; shipment: string }>;
   isAuthenticated: boolean; authReady: boolean; customerAccount: CustomerAccount | null; wholesaleMoq: number;
   catalogLoadStatus: CatalogLoadStatus; retryCatalogLoad: () => void;
-  login: (email: string, password: string) => Promise<void>; customerLogin: (email: string, password: string) => Promise<void>; registerCustomer: (name: string, email: string, password: string) => Promise<boolean>; refreshCustomerAccount: () => Promise<void>;
+  login: (email: string, password: string) => Promise<void>; customerLogin: (email: string, password: string) => Promise<'admin' | 'customer'>; registerCustomer: (name: string, email: string, password: string) => Promise<boolean>; refreshCustomerAccount: () => Promise<void>;
   requestPasswordReset: (email: string, audience?: 'admin'|'customer') => Promise<void>; updatePassword: (password: string) => Promise<void>; changePassword: (password: string) => Promise<void>; logout: () => Promise<void>;
 }
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -417,12 +417,18 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (error) throw new Error(error.message);
       const { data: profile, error: profileError } = await supabase.from('profiles').select('id,email,display_name,role,wholesale_status,company_name,wholesale_moq').eq('id', data.user.id).maybeSingle();
-      if (profileError || profile?.role !== 'customer') {
+      if (profileError || !profile || !['admin', 'customer'].includes(profile.role)) {
         await supabase.auth.signOut();
-        throw new Error('This sign-in is not a DAIRI customer account. Use the administrator sign-in for staff access.');
+        throw new Error('This account does not have DAIRI customer or administrator access.');
+      }
+      if (profile.role === 'admin') {
+        setCustomerAccount(null);
+        setIsAuthenticated(true);
+        return 'admin';
       }
       setCustomerAccount({ id: profile.id, email: profile.email, displayName: profile.display_name, wholesaleStatus: profile.wholesale_status ?? 'none', companyName: profile.company_name ?? '', wholesaleMoq: profile.wholesale_moq ?? 12 });
       setIsAuthenticated(false);
+      return 'customer';
     },
     registerCustomer: async (name, email, password) => {
       if (!supabase) throw new Error('Supabase is not configured.');

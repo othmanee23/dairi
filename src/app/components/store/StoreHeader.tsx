@@ -134,7 +134,7 @@ export function StoreHeader() {
                   </div>
                 </div>
               ))}
-              <Link to="/store/shop" className="block aspect-[4/5] overflow-hidden bg-[#f4f4f4]">
+              <Link to="/store/shop" className="block aspect-[3/4] overflow-hidden bg-[#f4f4f4]">
                 <img src={menuImage} alt="New collection preview" className="h-full w-full object-cover object-top" />
               </Link>
             </div>
@@ -187,7 +187,7 @@ export function StoreHeader() {
             {searchResults.length ? <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               {searchResults.map((product) => (
                 <Link key={product.id} to={`/store/products/${product.id}`} onClick={() => setSearchOpen(false)} className="group">
-                  <div className="relative aspect-[4/5] bg-[#f6f6f6] overflow-hidden mb-4">
+                  <div className="relative aspect-[3/4] bg-[#f6f6f6] overflow-hidden mb-4">
                     <img src={product.image} alt={product.name} className="h-full w-full object-cover object-top" />
                     <span className="absolute right-4 bottom-3 text-2xl">+</span>
                   </div>

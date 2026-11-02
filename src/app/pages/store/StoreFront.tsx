@@ -50,7 +50,7 @@ function CategoryTile({ title, image, href }: { title: string; image: string; hr
 function HomeProductCard({ product, wholesale }: { product: StoreProduct; wholesale: boolean }) {
   return (
     <Link to={`/store/products/${product.id}`} className="store-card group block">
-      <div className="relative aspect-[4/5] bg-[#f5f5f5] overflow-hidden mb-4">
+      <div className="relative aspect-[3/4] bg-[#f5f5f5] overflow-hidden mb-4">
         <img
           src={product.image}
           alt={product.name}
@@ -78,7 +78,7 @@ function SpotlightProductCard({ product, wholesale }: { product: StoreProduct; w
       to={`/store/products/${product.id}`}
       className="store-card group block w-[72%] shrink-0 snap-start sm:w-[42%] md:w-[30%] lg:w-[calc((100%-72px)/4)]"
     >
-      <div className="mb-3 aspect-[4/5] overflow-hidden bg-[#f3f2f0]">
+      <div className="mb-3 aspect-[3/4] overflow-hidden bg-[#f3f2f0]">
         <img
           src={product.image}
           alt={product.name}
