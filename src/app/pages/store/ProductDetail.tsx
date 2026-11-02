@@ -108,7 +108,7 @@ export function ProductDetail() {
         <section className="px-6 lg:px-10 py-10 grid grid-cols-1 lg:grid-cols-[minmax(0,1.65fr)_minmax(300px,.72fr)] gap-10">
           <div className="grid gap-4">
             {imageSet.map((image, index) => (
-              <div key={index} className="aspect-[3/4] w-full overflow-hidden bg-[#f5f5f5]">
+              <div key={index} className="mx-auto aspect-[3/4] w-full overflow-hidden bg-[#f5f5f5]" style={{ maxWidth: 'min(100%, 56vh, 640px)' }}>
                 <img
                   src={image}
                   alt={`${product.name} view ${index + 1}`}
