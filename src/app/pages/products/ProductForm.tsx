@@ -113,9 +113,8 @@ export function ProductForm() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (activeStep < steps.length - 1) { goToNextStep(); return; }
+  const saveProduct = async () => {
+    if (activeStep !== steps.length - 1 || saving) return;
     for (const step of [0, 2]) {
       if (!validateStep(step)) { setActiveStep(step); return; }
     }
@@ -235,7 +234,7 @@ export function ProductForm() {
           })}
         </nav>
 
-        <form onSubmit={handleSubmit} noValidate>
+        <form onSubmit={event => event.preventDefault()} noValidate>
           <section className="min-h-[440px] border border-neutral-200 bg-white p-5 sm:p-8">
             <div className="mb-7 border-b border-neutral-100 pb-5">
               <h2 className="text-xl font-medium">{stepTitles[activeStep]}</h2>
@@ -309,7 +308,7 @@ export function ProductForm() {
           <footer className="mt-5 flex flex-wrap items-center justify-between gap-3">
             <Button type="button" variant="outline" onClick={() => activeStep === 0 ? navigate('/admin/products') : setActiveStep(step => Math.max(step - 1, 0))} className="h-11 rounded-none border-neutral-300 px-5"><ChevronLeft className="mr-1 h-4 w-4" />{activeStep === 0 ? 'Cancel' : 'Back'}</Button>
             <p className="hidden text-xs text-neutral-400 sm:block">Your changes are saved when you finish this setup.</p>
-            {activeStep < steps.length - 1 ? <Button type="button" onClick={goToNextStep} className="h-11 rounded-none bg-black px-6 text-white hover:bg-neutral-800">Continue<ChevronRight className="ml-2 h-4 w-4" /></Button> : <Button type="submit" disabled={saving} className="h-11 rounded-none bg-black px-6 text-white hover:bg-neutral-800 disabled:opacity-50">{saving ? 'Saving…' : isEditing ? 'Save changes' : formData.status === 'published' ? 'Publish product' : 'Create draft'}<Check className="ml-2 h-4 w-4" /></Button>}
+            {activeStep < steps.length - 1 ? <Button type="button" onClick={goToNextStep} className="h-11 rounded-none bg-black px-6 text-white hover:bg-neutral-800">Continue<ChevronRight className="ml-2 h-4 w-4" /></Button> : <Button type="button" onClick={() => void saveProduct()} disabled={saving} className="h-11 rounded-none bg-black px-6 text-white hover:bg-neutral-800 disabled:opacity-50">{saving ? 'Saving…' : isEditing ? 'Save changes' : formData.status === 'published' ? 'Publish product' : 'Create draft'}<Check className="ml-2 h-4 w-4" /></Button>}
           </footer>
         </form>
       </div>
