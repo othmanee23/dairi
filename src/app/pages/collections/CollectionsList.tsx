@@ -1,12 +1,25 @@
 import { useApp } from '../../context/AppContext';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { Button } from '../../components/ui/button';
-import { Plus, Layers } from 'lucide-react';
+import { Plus, Layers, Trash2 } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import { toast } from 'sonner';
+import type { MouseEvent } from 'react';
 
 export function CollectionsList() {
-  const { collections, products } = useApp();
+  const { collections, products, deleteCollection } = useApp();
   const navigate = useNavigate();
+
+  const handleDelete = async (event: MouseEvent, collectionId: string, collectionName: string) => {
+    event.preventDefault();
+    if (!window.confirm(`Delete “${collectionName}”? Its subcollections will be removed, but its products will stay in the catalog without a collection.`)) return;
+    try {
+      await deleteCollection(collectionId);
+      toast.success('Collection deleted');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not delete collection');
+    }
+  };
 
   return (
     <div className="admin-page p-8 lg:p-10">
@@ -35,11 +48,8 @@ export function CollectionsList() {
             );
 
             return (
-              <div
-                key={collection.id}
-                className="admin-card group cursor-pointer p-3"
-                onClick={() => navigate(`/admin/collections/${collection.id}`)}
-              >
+              <article key={collection.id} className="admin-card p-3">
+                <Link to={`/admin/collections/${collection.id}`} className="group block">
                 <div className="aspect-[4/5] bg-neutral-100 mb-4 overflow-hidden">
                   <ImageWithFallback
                     src={collection.image}
@@ -52,16 +62,21 @@ export function CollectionsList() {
                 <p className="text-sm text-neutral-600 mb-3">
                   {collection.description}
                 </p>
-                
-                <div className="flex items-center gap-4 text-sm text-neutral-600">
-                  <div className="flex items-center gap-2">
-                    <Layers className="w-4 h-4" />
-                    <span>{collectionProducts.length} products</span>
+                </Link>
+                <div className="flex items-center justify-between gap-3 text-sm text-neutral-600">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Layers className="w-4 h-4" />
+                      <span>{collectionProducts.length} products</span>
+                    </div>
+                    <span>•</span>
+                    <span>{collection.season}</span>
                   </div>
-                  <span>•</span>
-                  <span>{collection.season}</span>
+                  <Button type="button" variant="outline" aria-label={`Delete ${collection.name}`} onClick={event => void handleDelete(event, collection.id, collection.name)} className="h-9 shrink-0 rounded-none px-3 text-red-700 hover:text-red-800">
+                    <Trash2 className="mr-2 h-4 w-4" />Delete
+                  </Button>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>
