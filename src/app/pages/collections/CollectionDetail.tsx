@@ -136,7 +136,7 @@ export function CollectionDetail() {
           {collectionSubcollections.map(subcollection => {
             const items = collectionProducts.filter(product => product.subcollectionId === subcollection.id);
             return <section key={subcollection.id} className="mb-10">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-lg font-medium">{subcollection.name}</h3><p className="text-xs text-neutral-500">{items.length} products</p></div><Button variant="outline" onClick={() => openProductFlow(subcollection.id)} className="h-10 rounded-none px-4"><Plus className="mr-2 h-4 w-4" />Add product</Button></div>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-lg font-medium">{subcollection.name}</h3><p className="text-xs text-neutral-500">{items.length} products</p></div><Button onClick={() => openProductFlow(subcollection.id)} className="h-10 rounded-none bg-black px-4 text-white hover:bg-neutral-800"><Plus className="mr-2 h-4 w-4" />Add product</Button></div>
               <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">{items.map(product => (
               <div
                 key={product.id}
