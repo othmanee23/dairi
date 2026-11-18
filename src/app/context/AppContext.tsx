@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
-import { Product, ProductVariant, Collection, Lookbook } from '../types';
+import { Product, ProductVariant, Collection, Lookbook, Subcollection } from '../types';
 import { mockLookbooks } from '../data/mockData';
 import { storeProducts, upgradeLocalImageReference } from '../data/storeProducts';
 import { supabase, supabaseReady } from '../lib/supabase';
@@ -13,12 +13,13 @@ export interface CartItem { productId: string; variantId: string; quantity: numb
 export interface LocalOrder { id: string; createdAt: string; customer: { name: string; email: string; address: string; city: string; region?: string; postalCode: string; country: string }; items: CartItem[]; total: number; subtotal?: number; discount?: number; discountCode?: string; shipping?: number; tax?: number; shippingConfigured?: boolean; taxConfigured?: boolean; status: string; trackingCarrier?: string; trackingNumber?: string; shippedAt?: string }
 export interface LocalSettings { brandName: string; logo: string; primaryColor: string; secondaryColor: string; fontFamily: string; defaultFormat: 'a4'|'square'|'portrait'; defaultLayout: 'minimal'|'editorial'|'magazine'; email: string; name: string }
 export interface CustomerAccount { id: string; email: string; displayName: string; wholesaleStatus: 'none'|'pending'|'approved'|'rejected'; companyName: string; wholesaleMoq: number }
-interface PersistedState { products: Product[]; collections: Collection[]; lookbooks: Lookbook[]; cart: CartItem[]; wishlist: string[]; orders: LocalOrder[]; subscribers: string[]; supportRequests: { email: string; message: string; createdAt: string }[]; settings: LocalSettings }
-type ProductRow = { id: string; style_number: string | null; name: string; price: number; images: string[]; category: string; collection: string; description: string; tags: string[]; status: Product['status']; show_on_website: boolean; created_at: string; color: string | null; color_hex: string | null; details: string[]; material: string | null; fit: string | null; care: string | null; sizes: string[] };
+interface PersistedState { products: Product[]; collections: Collection[]; subcollections: Subcollection[]; lookbooks: Lookbook[]; cart: CartItem[]; wishlist: string[]; orders: LocalOrder[]; subscribers: string[]; supportRequests: { email: string; message: string; createdAt: string }[]; settings: LocalSettings }
+type ProductRow = { id: string; style_number: string | null; name: string; price: number; images: string[]; category: string; collection: string; collection_id: string | null; subcollection_id: string | null; description: string; tags: string[]; status: Product['status']; show_on_website: boolean; created_at: string; color: string | null; color_hex: string | null; details: string[]; material: string | null; product_length: string | null; product_width: string | null; sleeve_type: string | null; inseam: string | null; fit: string | null; care: string | null; sizes: string[] };
 type ProductVariantRow = { id: string; product_id: string; sku: string; color: string; color_hex: string | null; size: string; retail_price: number | null; inventory_quantity: number; is_active: boolean };
 type WholesalePriceRow = { variant_id: string; price: number };
 type CollectionRow = { id: string; name: string; description: string; season: string; image: string; product_count: number; created_at: string };
-type LookbookRow = { id: string; name: string; created_at: string; product_ids: string[]; layout: Lookbook['layout']; cover_title: string; cover_image: string | null; format: Lookbook['format'] };
+type SubcollectionRow = { id: string; collection_id: string; name: string; sort_order: number };
+type LookbookRow = { id: string; name: string; created_at: string; product_ids: string[]; sections: Lookbook['sections']; layout: Lookbook['layout']; cover_title: string; cover_image: string | null; format: Lookbook['format'] };
 type StoreSettingsRow = { brand_name: string; logo: string; primary_color: string; secondary_color: string; font_family: string; default_format: LocalSettings['defaultFormat']; default_layout: LocalSettings['defaultLayout']; email: string; name: string };
 async function uploadImageReference(image: string, directory: string) {
   const client = supabase;
@@ -34,10 +35,10 @@ async function uploadImageReference(image: string, directory: string) {
   return client.storage.from('product-media').getPublicUrl(path).data.publicUrl;
 }
 const variantFromRow = (row: ProductVariantRow, wholesalePrice?: number): ProductVariant => ({ id: row.id, sku: row.sku, color: row.color, colorHex: row.color_hex ?? undefined, size: row.size, retailPrice: row.retail_price == null ? undefined : Number(row.retail_price), wholesalePrice, inventoryQuantity: row.inventory_quantity, isActive: row.is_active });
-const productFromRow = (row: ProductRow, variants: ProductVariant[] = []): Product => ({ id: row.id, styleNumber: row.style_number ?? undefined, name: row.name, price: Number(row.price), images: row.images.map(upgradeLocalImageReference), category: row.category, collection: row.collection, description: row.description, tags: row.tags, status: row.status, showOnWebsite: row.show_on_website, createdAt: row.created_at.slice(0, 10), color: row.color ?? undefined, colorHex: row.color_hex ?? undefined, details: row.details, material: row.material ?? undefined, fit: row.fit ?? undefined, care: row.care ?? undefined, sizes: row.sizes, variants });
+const productFromRow = (row: ProductRow, variants: ProductVariant[] = []): Product => ({ id: row.id, styleNumber: row.style_number ?? undefined, name: row.name, price: Number(row.price), images: row.images.map(upgradeLocalImageReference), category: row.category, collection: row.collection, collectionId: row.collection_id ?? undefined, subcollectionId: row.subcollection_id ?? undefined, description: row.description, tags: row.tags, status: row.status, showOnWebsite: row.show_on_website, createdAt: row.created_at.slice(0, 10), color: row.color ?? undefined, colorHex: row.color_hex ?? undefined, details: row.details, material: row.material ?? undefined, productLength: row.product_length ?? undefined, productWidth: row.product_width ?? undefined, sleeveType: row.sleeve_type ?? undefined, inseam: row.inseam ?? undefined, fit: row.fit ?? undefined, care: row.care ?? undefined, sizes: row.sizes, variants });
 async function productToRow(product: Product) {
   const images = await Promise.all(product.images.map(image => uploadImageReference(image, `products/${product.id.replace(/[^a-zA-Z0-9_-]/g, '-')}`)));
-  return { id: product.id, style_number: product.styleNumber ?? null, name: product.name, price: product.price, images, category: product.category, collection: product.collection, description: product.description, tags: product.tags, status: product.status, show_on_website: product.showOnWebsite, created_at: product.createdAt, color: product.color ?? null, color_hex: product.colorHex ?? null, details: product.details ?? [], material: product.material ?? null, fit: product.fit ?? null, care: product.care ?? null, sizes: product.sizes ?? [] };
+  return { id: product.id, style_number: product.styleNumber ?? null, name: product.name, price: product.price, images, category: product.category, collection: product.collection, collection_id: product.collectionId ?? null, subcollection_id: product.subcollectionId ?? null, description: product.description, tags: product.tags, status: product.status, show_on_website: product.showOnWebsite, created_at: product.createdAt, color: product.color ?? null, color_hex: product.colorHex ?? null, details: product.details ?? [], material: product.material ?? null, product_length: product.productLength ?? null, product_width: product.productWidth ?? null, sleeve_type: product.sleeveType ?? null, inseam: product.inseam ?? null, fit: product.fit ?? null, care: product.care ?? null, sizes: product.sizes ?? [] };
 }
 const variantToRow = (productId: string, variant: ProductVariant) => ({ id: variant.id, product_id: productId, sku: variant.sku, color: variant.color, color_hex: variant.colorHex ?? null, size: variant.size, retail_price: variant.retailPrice ?? null, inventory_quantity: variant.inventoryQuantity, is_active: variant.isActive });
 async function saveProductVariants(productId: string, variants: ProductVariant[]) {
@@ -69,8 +70,10 @@ async function saveProductVariants(productId: string, variants: ProductVariant[]
 }
 const collectionFromRow = (row: CollectionRow): Collection => ({ id: row.id, name: row.name, description: row.description, season: row.season, image: upgradeLocalImageReference(row.image), productCount: row.product_count });
 const collectionToRow = (collection: Collection) => ({ id: collection.id, name: collection.name, description: collection.description, season: collection.season, image: collection.image, product_count: collection.productCount, is_published: true });
-const lookbookFromRow = (row: LookbookRow): Lookbook => ({ id: row.id, name: row.name, createdAt: row.created_at.slice(0, 10), productIds: row.product_ids, layout: row.layout, coverTitle: row.cover_title, coverImage: row.cover_image ? upgradeLocalImageReference(row.cover_image) : undefined, format: row.format });
-async function lookbookToRow(lookbook: Lookbook) { return { id: lookbook.id, name: lookbook.name, created_at: lookbook.createdAt, product_ids: lookbook.productIds, layout: lookbook.layout, cover_title: lookbook.coverTitle, cover_image: lookbook.coverImage ? await uploadImageReference(lookbook.coverImage, `lookbooks/${lookbook.id}`) : null, format: lookbook.format }; }
+const subcollectionFromRow = (row: SubcollectionRow): Subcollection => ({ id: row.id, collectionId: row.collection_id, name: row.name, sortOrder: row.sort_order });
+const subcollectionToRow = (item: Subcollection) => ({ id: item.id, collection_id: item.collectionId, name: item.name.trim(), sort_order: item.sortOrder });
+const lookbookFromRow = (row: LookbookRow): Lookbook => ({ id: row.id, name: row.name, createdAt: row.created_at.slice(0, 10), productIds: row.product_ids, sections: row.sections ?? [], layout: row.layout, coverTitle: row.cover_title, coverImage: row.cover_image ? upgradeLocalImageReference(row.cover_image) : undefined, format: row.format });
+async function lookbookToRow(lookbook: Lookbook) { return { id: lookbook.id, name: lookbook.name, created_at: lookbook.createdAt, product_ids: lookbook.productIds, sections: lookbook.sections ?? [], layout: lookbook.layout, cover_title: lookbook.coverTitle, cover_image: lookbook.coverImage ? await uploadImageReference(lookbook.coverImage, `lookbooks/${lookbook.id}`) : null, format: lookbook.format }; }
 const settingsFromRow = (row: StoreSettingsRow): LocalSettings => ({ brandName: row.brand_name, logo: upgradeLocalImageReference(row.logo), primaryColor: row.primary_color, secondaryColor: row.secondary_color, fontFamily: row.font_family, defaultFormat: row.default_format, defaultLayout: row.default_layout, email: row.email, name: row.name });
 async function settingsToRow(settings: LocalSettings) { return { id: 'default', brand_name: settings.brandName, logo: settings.logo ? await uploadImageReference(settings.logo, 'store') : '', primary_color: settings.primaryColor, secondary_color: settings.secondaryColor, font_family: settings.fontFamily, default_format: settings.defaultFormat, default_layout: settings.defaultLayout, email: settings.email, name: settings.name, currency: 'USD' as const }; }
 const initialProducts: Product[] = storeProducts.map((p) => ({
@@ -80,7 +83,7 @@ const initialProducts: Product[] = storeProducts.map((p) => ({
   variants: p.sizes.map(size => ({ id: crypto.randomUUID(), sku: `DAIRI-${p.id}-${size}`.toUpperCase(), color: p.color, colorHex: p.colorHex, size, inventoryQuantity: 0, isActive: true })),
 }));
 export const initialSettings: LocalSettings = { brandName: 'DAIRI', logo: '', primaryColor: '#000000', secondaryColor: '#f5f5f5', fontFamily: 'inter', defaultFormat: 'a4', defaultLayout: 'editorial', email: '', name: 'Creative Director' };
-const initialState: PersistedState = { products: initialProducts, collections: [{ id: 'dairi-edit', name: 'DAIRI Edit', description: 'The latest pieces from the DAIRI studio.', season: 'Current Season', image: initialProducts[0]?.images[0] ?? '', productCount: initialProducts.length }], lookbooks: mockLookbooks, cart: [], wishlist: [], orders: [], subscribers: [], supportRequests: [], settings: initialSettings };
+const initialState: PersistedState = { products: initialProducts, collections: [{ id: 'dairi-edit', name: 'DAIRI Edit', description: 'The latest pieces from the DAIRI studio.', season: 'Current Season', image: initialProducts[0]?.images[0] ?? '', productCount: initialProducts.length }], subcollections: [], lookbooks: mockLookbooks, cart: [], wishlist: [], orders: [], subscribers: [], supportRequests: [], settings: initialSettings };
 function readSavedState(): PersistedState {
   let guestOrder: LocalOrder | null = null;
   try { guestOrder = readGuestOrder(sessionStorage.getItem(GUEST_ORDER_SESSION_KEY)) as LocalOrder | null; } catch { /* Session storage may be unavailable in hardened browser contexts. */ }
@@ -100,6 +103,7 @@ function readSavedState(): PersistedState {
       subscribers: [],
       supportRequests: [],
       products,
+      subcollections: saved.subcollections ?? [],
       cart: (saved.cart ?? []).map(line => {
         const product = products.find(item => item.id === line.productId);
         const variant = product?.variants?.find(item => item.size === line.size && item.color === (line.color ?? product.color ?? '') && item.isActive);
@@ -130,9 +134,9 @@ function readSavedState(): PersistedState {
 }
 
 interface AppContextType {
-  products: Product[]; collections: Collection[]; lookbooks: Lookbook[]; cart: CartItem[]; wishlist: string[]; orders: LocalOrder[]; subscribers: string[]; supportRequests: PersistedState['supportRequests']; settings: LocalSettings;
+  products: Product[]; collections: Collection[]; subcollections: Subcollection[]; lookbooks: Lookbook[]; cart: CartItem[]; wishlist: string[]; orders: LocalOrder[]; subscribers: string[]; supportRequests: PersistedState['supportRequests']; settings: LocalSettings;
   addProduct: (product: Product) => Promise<void>; updateProduct: (id: string, product: Partial<Product>) => Promise<void>; deleteProduct: (id: string) => Promise<void>; deleteProducts: (ids: string[]) => Promise<void>;
-  addCollection: (collection: Collection) => Promise<void>; updateCollection: (id: string, collection: Partial<Collection>) => Promise<void>; deleteCollection: (id: string) => Promise<void>; addLookbook: (lookbook: Lookbook) => Promise<void>; updateLookbook: (id: string, lookbook: Partial<Lookbook>) => Promise<void>;
+  addCollection: (collection: Collection) => Promise<void>; updateCollection: (id: string, collection: Partial<Collection>) => Promise<void>; deleteCollection: (id: string) => Promise<void>; addSubcollection: (subcollection: Subcollection) => Promise<void>; updateSubcollection: (id: string, patch: Partial<Subcollection>) => Promise<void>; deleteSubcollection: (id: string) => Promise<void>; addLookbook: (lookbook: Lookbook) => Promise<void>; updateLookbook: (id: string, lookbook: Partial<Lookbook>) => Promise<void>;
   addToCart: (productId: string, variantId: string, size: string, color: string, quantity?: number) => void; setCartQuantity: (productId: string, variantId: string, quantity: number) => void; removeFromCart: (productId: string, variantId: string) => void; clearCart: () => void; toggleWishlist: (id: string) => void;
   placeOrder: (customer: LocalOrder['customer'] & { discountCode?: string }) => Promise<LocalOrder>; subscribe: (email: string) => Promise<void>; submitSupportRequest: (email: string, message: string) => Promise<void>; updateSettings: (settings: Partial<LocalSettings>) => Promise<void>;
   cancelOrder: (orderNumber: string) => Promise<void>;
@@ -148,7 +152,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<PersistedState>(() => {
     const restored = readSavedState();
-    return supabaseReady ? { ...restored, products: [], collections: [] } : restored;
+    return supabaseReady ? { ...restored, products: [], collections: [], subcollections: [] } : restored;
   });
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [customerAccount, setCustomerAccount] = useState<CustomerAccount | null>(null);
@@ -184,13 +188,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     let active = true;
     const loadCatalog = async () => {
       setCatalogLoadStatus('loading');
-      setState(current => ({ ...current, products: [], collections: [] }));
+      setState(current => ({ ...current, products: [], collections: [], subcollections: [] }));
       try {
-        const [productResult, collectionResult, variantResult, wholesaleResult] = await Promise.all([
+        const [productResult, collectionResult, variantResult, wholesaleResult, subcollectionResult] = await Promise.all([
           supabase.from('products').select('*').order('created_at', { ascending: false }),
           supabase.from('collections').select('*').order('created_at', { ascending: false }),
           supabase.from('product_variants').select('*').order('sku'),
           isAuthenticated || customerAccount?.wholesaleStatus === 'approved' ? supabase.from('wholesale_variant_prices').select('variant_id,price') : Promise.resolve({ data: [], error: null }),
+          isAuthenticated ? supabase.from('subcollections').select('id,collection_id,name,sort_order').order('sort_order').order('name') : Promise.resolve({ data: [], error: null }),
         ]);
         if (!active) return;
         const catalogError = getCatalogLoadError([
@@ -198,10 +203,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           { label: 'collections', error: collectionResult.error },
           { label: 'product variants', error: variantResult.error },
           { label: 'wholesale prices', error: wholesaleResult.error },
+          { label: 'subcollections', error: subcollectionResult.error },
         ]);
         if (catalogError || !productResult.data || !collectionResult.data || !variantResult.data || !wholesaleResult.data) {
           console.error('DAIRI catalog could not be loaded', catalogError ?? 'An expected catalog response was empty.');
-          setState(current => ({ ...current, products: [], collections: [] }));
+          setState(current => ({ ...current, products: [], collections: [], subcollections: [] }));
           setCatalogLoadStatus('error');
           return;
         }
@@ -210,6 +216,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         for (const row of (variantResult.data ?? []) as ProductVariantRow[]) grouped.set(row.product_id, [...(grouped.get(row.product_id) ?? []), variantFromRow(row, wholesalePrices.get(row.id))]);
         setState(current => ({ ...current, products: (productResult.data as ProductRow[]).map(row => productFromRow(row, grouped.get(row.id) ?? [])) }));
         setState(current => ({ ...current, collections: (collectionResult.data as CollectionRow[]).map(collectionFromRow) }));
+        setState(current => ({ ...current, subcollections: ((subcollectionResult.data ?? []) as SubcollectionRow[]).map(subcollectionFromRow) }));
         setCatalogLoadStatus(hasDemoProducts(productResult.data as ProductRow[]) ? 'demo' : 'ready');
         if (isAuthenticated) {
           const [lookbookResult, settingsResult] = await Promise.all([
@@ -225,7 +232,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       } catch (error) {
         if (!active) return;
         console.error('DAIRI catalog request failed', error instanceof Error ? error.message : 'Unknown catalog error');
-        setState(current => ({ ...current, products: [], collections: [] }));
+        setState(current => ({ ...current, products: [], collections: [], subcollections: [] }));
         setCatalogLoadStatus('error');
       }
     };
@@ -317,7 +324,30 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       if (productsResult.error) throw new Error(productsResult.error.message);
       const { error } = await supabase.from('collections').delete().eq('id', id);
       if (error) throw new Error(error.message);
-      setState(s => ({ ...s, collections: s.collections.filter(collection => collection.id !== id), products: s.products.map(p => p.collection === current.name ? { ...p, collection: '' } : p) }));
+      setState(s => ({ ...s, collections: s.collections.filter(collection => collection.id !== id), subcollections: s.subcollections.filter(item => item.collectionId !== id), products: s.products.map(p => p.collection === current.name ? { ...p, collection: '', collectionId: undefined, subcollectionId: undefined } : p) }));
+    },
+    addSubcollection: async subcollection => {
+      if (!supabase) throw new Error('Supabase is not configured.');
+      const { error } = await supabase.from('subcollections').insert(subcollectionToRow(subcollection));
+      if (error) throw new Error(error.message);
+      setState(s => ({ ...s, subcollections: [...s.subcollections, { ...subcollection, name: subcollection.name.trim() }].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)) }));
+    },
+    updateSubcollection: async (id, patch) => {
+      if (!supabase) throw new Error('Supabase is not configured.');
+      const current = state.subcollections.find(item => item.id === id);
+      if (!current) throw new Error('Subcollection not found.');
+      const next = { ...current, ...patch, name: patch.name?.trim() ?? current.name };
+      const { error } = await supabase.from('subcollections').update(subcollectionToRow(next)).eq('id', id);
+      if (error) throw new Error(error.message);
+      setState(s => ({ ...s, subcollections: s.subcollections.map(item => item.id === id ? next : item) }));
+    },
+    deleteSubcollection: async id => {
+      if (!supabase) throw new Error('Supabase is not configured.');
+      const { error: productsError } = await supabase.from('products').update({ subcollection_id: null }).eq('subcollection_id', id);
+      if (productsError) throw new Error(productsError.message);
+      const { error } = await supabase.from('subcollections').delete().eq('id', id);
+      if (error) throw new Error(error.message);
+      setState(s => ({ ...s, subcollections: s.subcollections.filter(item => item.id !== id), products: s.products.map(product => product.subcollectionId === id ? { ...product, subcollectionId: undefined } : product) }));
     },
     addLookbook: async lookbook => {
       if (!supabase) throw new Error('Supabase is not configured.');

@@ -1,19 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Checkbox } from '../../components/ui/checkbox';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../components/ui/select';
 import { 
   Eye,
   FileText,
@@ -24,7 +17,7 @@ import {
 } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { toast } from 'sonner';
-import { Lookbook } from '../../types';
+import { Lookbook, LookbookSection, Product } from '../../types';
 import dairiLogo from '../../../imports/dairi-logo.svg';
 import { readOptimizedImage } from '../../utils/image';
 
@@ -93,19 +86,89 @@ function DraggableProduct({ productId, index, moveProduct, removeProduct }: Drag
 }
 
 function LookbookGeneratorContent() {
-  const { products, collections, addLookbook, settings } = useApp();
+  const { products, collections, subcollections, addLookbook, settings, catalogLoadStatus } = useApp();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [lookbookName, setLookbookName] = useState('');
   const [coverTitle, setCoverTitle] = useState('');
   const [coverImage, setCoverImage] = useState('');
-  const [collectionFilter, setCollectionFilter] = useState('all');
+  const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
+  const [selectedSubcollectionIds, setSelectedSubcollectionIds] = useState<string[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [selectionInitialized, setSelectionInitialized] = useState(false);
+  const [isCoverDragActive, setIsCoverDragActive] = useState(false);
 
-  const filteredProducts = useMemo(() => {
-    if (collectionFilter === 'all') return products;
-    return products.filter(p => p.collection === collectionFilter);
-  }, [products, collectionFilter]);
+  const parentCollectionId = (product: Product) => product.collectionId || collections.find(collection => collection.name === product.collection)?.id || '';
+  const collectionProducts = (collectionId: string) => products.filter(product => parentCollectionId(product) === collectionId);
+  const filteredProducts = useMemo(() => products.filter(product => {
+    const parentId = product.collectionId || collections.find(collection => collection.name === product.collection)?.id || '';
+    return product.subcollectionId ? selectedSubcollectionIds.includes(product.subcollectionId) : selectedCollectionIds.includes(parentId);
+  }), [products, collections, selectedCollectionIds, selectedSubcollectionIds]);
+
+  useEffect(() => {
+    if (selectionInitialized || catalogLoadStatus === 'loading') return;
+    const requestedCollection = searchParams.get('collection');
+    const collection = requestedCollection ? collections.find(item => item.id === requestedCollection || item.name === requestedCollection) : undefined;
+    if (collection) {
+      const children = subcollections.filter(item => item.collectionId === collection.id);
+      setSelectedCollectionIds([collection.id]);
+      setSelectedSubcollectionIds(children.map(item => item.id));
+      setSelectedProducts(collectionProducts(collection.id).map(product => product.id));
+      setLookbookName(collection.name);
+      setCoverTitle(collection.name);
+    }
+    setSelectionInitialized(true);
+  }, [catalogLoadStatus, collections, searchParams, selectedCollectionIds.length, selectionInitialized, subcollections, products]);
+
+  const toggleCollection = (collectionId: string) => {
+    const children = subcollections.filter(item => item.collectionId === collectionId);
+    const currentlySelected = children.length ? children.every(item => selectedSubcollectionIds.includes(item.id)) : selectedCollectionIds.includes(collectionId);
+    const productIds = collectionProducts(collectionId).map(product => product.id);
+    if (currentlySelected) {
+      setSelectedCollectionIds(current => current.filter(id => id !== collectionId));
+      setSelectedSubcollectionIds(current => current.filter(id => !children.some(item => item.id === id)));
+      setSelectedProducts(current => current.filter(id => !productIds.includes(id)));
+      return;
+    }
+    setSelectedCollectionIds(current => current.includes(collectionId) ? current : [...current, collectionId]);
+    setSelectedSubcollectionIds(current => [...new Set([...current, ...children.map(item => item.id)])]);
+    setSelectedProducts(current => [...new Set([...current, ...productIds])]);
+  };
+
+  const toggleSubcollection = (subcollectionId: string) => {
+    const subcollection = subcollections.find(item => item.id === subcollectionId);
+    if (!subcollection) return;
+    const siblings = subcollections.filter(item => item.collectionId === subcollection.collectionId);
+    const productIds = products.filter(product => product.subcollectionId === subcollectionId).map(product => product.id);
+    const removing = selectedSubcollectionIds.includes(subcollectionId);
+    setSelectedSubcollectionIds(current => removing ? current.filter(id => id !== subcollectionId) : [...current, subcollectionId]);
+    const nextIds = new Set(selectedSubcollectionIds);
+    if (removing) nextIds.delete(subcollectionId); else nextIds.add(subcollectionId);
+    const allSelected = siblings.length > 0 && siblings.every(item => nextIds.has(item.id));
+    setSelectedCollectionIds(current => allSelected ? [...new Set([...current, subcollection.collectionId])] : current.filter(id => id !== subcollection.collectionId));
+    setSelectedProducts(current => removing ? current.filter(id => !productIds.includes(id)) : [...new Set([...current, ...productIds])]);
+  };
+
+  const buildSections = (): LookbookSection[] => {
+    const sections: LookbookSection[] = [];
+    for (const collection of collections) {
+      const children = subcollections.filter(item => item.collectionId === collection.id).sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+      for (const subcollection of children) {
+        if (!selectedSubcollectionIds.includes(subcollection.id)) continue;
+        const productIds = selectedProducts.filter(id => products.find(product => product.id === id)?.subcollectionId === subcollection.id);
+        if (productIds.length) sections.push({ collectionId: collection.id, collectionName: collection.name, subcollectionId: subcollection.id, subcollectionName: subcollection.name, productIds });
+      }
+      if (selectedCollectionIds.includes(collection.id)) {
+        const productIds = selectedProducts.filter(id => {
+          const product = products.find(item => item.id === id);
+          return product && parentCollectionId(product) === collection.id && !product.subcollectionId;
+        });
+        if (productIds.length) sections.push({ collectionId: collection.id, collectionName: collection.name, subcollectionName: children.length ? 'Unassigned products' : collection.name, productIds });
+      }
+    }
+    return sections;
+  };
 
   const toggleProduct = (id: string) => {
     setSelectedProducts(prev =>
@@ -136,19 +199,31 @@ function LookbookGeneratorContent() {
     readOptimizedImage(file, 1600).then(image => { setCoverImage(image); toast.success('Cover image uploaded'); }).catch(error => toast.error(error instanceof Error ? error.message : 'Could not read selected image'));
   };
 
+  const handleCoverDrop = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    setIsCoverDragActive(false);
+    handleCoverImageUpload(event.dataTransfer.files?.[0]);
+  };
+
   const handlePreview = async () => {
-    if (selectedProducts.length === 0) {
+    const sections = buildSections();
+    const productIds = sections.flatMap(section => section.productIds);
+    if (productIds.length === 0) {
       toast.error('Please select at least one product');
       return;
     }
 
+    const selectedCollectionNames = [...new Set(sections.map(section => section.collectionName))];
+    const generatedName = lookbookName.trim() || selectedCollectionNames.join(' · ') || 'Untitled Lookbook';
+
     const lookbook: Lookbook = {
       id: Date.now().toString(),
-      name: lookbookName || 'Untitled Lookbook',
+      name: generatedName,
       createdAt: new Date().toISOString().split('T')[0],
-      productIds: selectedProducts,
+      productIds,
+      sections,
       layout: settings.defaultLayout,
-      coverTitle: coverTitle || lookbookName || 'Untitled',
+      coverTitle: coverTitle.trim() || generatedName,
       coverImage: coverImage.trim() || undefined,
       format: settings.defaultFormat,
     };
@@ -206,7 +281,7 @@ function LookbookGeneratorContent() {
                   <Label htmlFor="coverImage" className="text-sm uppercase tracking-wider text-neutral-600 mb-2 block">
                     Cover Image
                   </Label>
-                  <div className="flex flex-col gap-3 md:flex-row">
+                  <div className="space-y-3">
                     <Input
                       id="coverImage"
                       value={coverImage.startsWith('data:') ? 'Uploaded from device' : coverImage}
@@ -214,9 +289,14 @@ function LookbookGeneratorContent() {
                       className="h-12 border-neutral-300 rounded-none"
                       placeholder="Paste image URL for the lookbook cover"
                     />
-                    <label className="admin-button inline-flex h-12 cursor-pointer items-center justify-center gap-2 border border-black bg-black px-5 text-sm text-white hover:bg-neutral-800">
-                      <Upload className="h-4 w-4" />
-                      Upload from device
+                    <label
+                      onDragOver={(event) => { event.preventDefault(); setIsCoverDragActive(true); }}
+                      onDragLeave={() => setIsCoverDragActive(false)}
+                      onDrop={handleCoverDrop}
+                      className={`flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 border border-dashed px-5 py-4 text-sm transition-colors ${isCoverDragActive ? 'border-black bg-neutral-100' : 'border-neutral-300 hover:border-black'}`}
+                    >
+                      <Upload className="h-5 w-5" />
+                      <span>{isCoverDragActive ? 'Drop cover image here' : 'Drop an image here or choose a file'}</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -288,24 +368,38 @@ function LookbookGeneratorContent() {
 
             {/* Product Selection */}
             <div className="admin-panel p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg tracking-tight">Select Products</h2>
-                <Select value={collectionFilter} onValueChange={setCollectionFilter}>
-                  <SelectTrigger className="w-48 border-neutral-300 rounded-none">
-                    <SelectValue placeholder="Filter by collection" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Collections</SelectItem>
-                    {collections.filter(col => col.name?.trim()).map(col => (
-                      <SelectItem key={col.id} value={col.name.trim()}>
-                        {col.name.trim()}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="mb-5">
+                <h2 className="text-lg tracking-tight">Choose collections and subcollections</h2>
+                <p className="mt-1 text-sm text-neutral-600">Selected subcollections become lookbook sections. Each section starts on a new page and continues after every 9 products.</p>
+              </div>
+              <div className="mb-6 space-y-3">
+                {collections.map(collection => {
+                  const children = subcollections.filter(item => item.collectionId === collection.id).sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
+                  const standaloneProducts = collectionProducts(collection.id).filter(product => !product.subcollectionId || !children.some(item => item.id === product.subcollectionId));
+                  return <section key={collection.id} className="border border-neutral-200">
+                    <label className="flex cursor-pointer items-center gap-3 bg-neutral-50 px-4 py-3">
+                      <Checkbox checked={selectedCollectionIds.includes(collection.id)} onCheckedChange={() => toggleCollection(collection.id)} />
+                      <span className="font-medium">{collection.name}</span>
+                      <span className="ml-auto text-xs text-neutral-500">{collectionProducts(collection.id).length} products</span>
+                    </label>
+                    {(children.length > 0 || standaloneProducts.length > 0) && <div className="grid gap-x-6 gap-y-2 px-4 py-3 sm:grid-cols-2">
+                      {children.map(subcollection => <label key={subcollection.id} className="flex cursor-pointer items-center gap-2 text-sm">
+                        <Checkbox checked={selectedSubcollectionIds.includes(subcollection.id)} onCheckedChange={() => toggleSubcollection(subcollection.id)} />
+                        <span>{subcollection.name}</span>
+                        <span className="ml-auto text-xs text-neutral-500">{products.filter(product => product.subcollectionId === subcollection.id).length}</span>
+                      </label>)}
+                      {standaloneProducts.length > 0 && <p className="text-xs text-neutral-500 sm:col-span-2">{standaloneProducts.length} unassigned product{standaloneProducts.length === 1 ? '' : 's'} will be included when this collection is selected.</p>}
+                    </div>}
+                  </section>;
+                })}
+                {collections.length === 0 && <p className="border border-dashed border-neutral-300 p-5 text-sm text-neutral-600">Create a collection first, then choose which subcollections to include.</p>}
               </div>
 
-              <div className="grid grid-cols-3 md:grid-cols-4 gap-4">
+              <div className="mb-3 flex items-baseline justify-between">
+                <h3 className="text-base font-medium">Products in selected sections</h3>
+                <span className="text-xs text-neutral-500">{filteredProducts.filter(product => selectedProducts.includes(product.id)).length} available</span>
+              </div>
+              <div className="grid grid-cols-3 gap-4 md:grid-cols-4">
                 {filteredProducts.map((product) => {
                   const isSelected = selectedProducts.includes(product.id);
                   return (
@@ -331,6 +425,7 @@ function LookbookGeneratorContent() {
                   );
                 })}
               </div>
+              {filteredProducts.length === 0 && <p className="py-8 text-center text-sm text-neutral-500">Choose a collection or subcollection to see its products.</p>}
             </div>
           </div>
 

@@ -20,6 +20,8 @@ export interface Product {
   images: string[];
   category: string;
   collection: string;
+  collectionId?: string;
+  subcollectionId?: string;
   description: string;
   tags: string[];
   status: ProductStatus;
@@ -29,6 +31,10 @@ export interface Product {
   colorHex?: string;
   details?: string[];
   material?: string;
+  productLength?: string;
+  productWidth?: string;
+  sleeveType?: string;
+  inseam?: string;
   fit?: string;
   care?: string;
   sizes?: string[];
@@ -44,11 +50,27 @@ export interface Collection {
   productCount: number;
 }
 
+export interface Subcollection {
+  id: string;
+  collectionId: string;
+  name: string;
+  sortOrder: number;
+}
+
+export interface LookbookSection {
+  collectionId: string;
+  collectionName: string;
+  subcollectionId?: string;
+  subcollectionName: string;
+  productIds: string[];
+}
+
 export interface Lookbook {
   id: string;
   name: string;
   createdAt: string;
   productIds: string[];
+  sections?: LookbookSection[];
   layout: 'minimal' | 'editorial' | 'magazine';
   coverTitle: string;
   coverImage?: string;

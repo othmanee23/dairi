@@ -270,7 +270,7 @@ export function LookbookPreview() {
   const layoutSpec = layoutSpecs[lookbook.layout];
   const formatSpec = formatSpecs[lookbook.format];
   const productPages = chunkCatalogProducts(lookbookProducts, layoutSpec.perPage);
-  const dairiProductPages = buildDairiLineSheetPages(lookbookProducts);
+  const dairiProductPages = buildDairiLineSheetPages(lookbookProducts, lookbook.sections);
   const dairiPricePages = splitPriceListPages(dairiProductPages);
   const dairiPreviewPages = dairiProductPages.length + dairiPricePages.length + 3;
   const previewPageCount = dairiPreviewPages;
@@ -288,7 +288,14 @@ export function LookbookPreview() {
 
   const handleRegenerate = async () => {
     try {
-      await updateLookbook(lookbook.id, { layout: settings.defaultLayout, format: settings.defaultFormat, productIds: lookbook.productIds.filter(id => products.some(product => product.id === id)) });
+      const productIds = lookbook.productIds.filter(id => products.some(product => product.id === id));
+      const productIdSet = new Set(productIds);
+      await updateLookbook(lookbook.id, {
+        layout: settings.defaultLayout,
+        format: settings.defaultFormat,
+        productIds,
+        sections: lookbook.sections?.map(section => ({ ...section, productIds: section.productIds.filter(id => productIdSet.has(id)) })).filter(section => section.productIds.length),
+      });
       setCurrentPage(0);
       toast.success('Lookbook refreshed with current defaults');
     } catch (error) {

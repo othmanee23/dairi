@@ -1,4 +1,4 @@
-import type { Product } from '../../types';
+import type { LookbookSection, Product } from '../../types';
 
 export type DairiLineSheetPage = { title: string; products: Product[] };
 export type DairiPriceListGroup = { pageNumber: number; products: Product[] };
@@ -15,7 +15,20 @@ export function hasDairiImageSource(source: string | null | undefined): boolean 
 }
 
 /** Preserve the selected product order while keeping each color together. */
-export function buildDairiLineSheetPages(products: Product[]): DairiLineSheetPage[] {
+export function buildDairiLineSheetPages(products: Product[], sections?: LookbookSection[]): DairiLineSheetPage[] {
+  if (sections?.length) {
+    const productsById = new Map(products.map(product => [product.id, product]));
+    return sections.flatMap(section => {
+      const sectionProducts = section.productIds
+        .map(id => productsById.get(id))
+        .filter((product): product is Product => Boolean(product));
+      return chunkCatalogProducts(sectionProducts, 9).map(pageProducts => ({
+        title: section.subcollectionName,
+        products: pageProducts,
+      }));
+    });
+  }
+
   const groups = new Map<string, Product[]>();
   for (const product of products) {
     const title = product.color?.trim() || product.collection?.trim() || 'DAIRI COLLECTION';

@@ -188,7 +188,13 @@ export function ProductDetail() {
               Available in select DAIRI stores. Choose your size and contact a stylist to reserve this piece.
             </AccordionRow>
             <AccordionRow label="Fit Details">
-              {storeProduct.fit}. If you are between sizes, choose the larger size for an easier drape.
+              {[
+                storeProduct.fit,
+                product.sleeveType && `Sleeve: ${product.sleeveType}`,
+                product.productLength && `Length: ${product.productLength}`,
+                product.productWidth && `Width: ${product.productWidth}`,
+                product.inseam && `Inseam: ${product.inseam}`,
+              ].filter(Boolean).join(' · ') || 'See the selected size for fit information.'}
             </AccordionRow>
             <AccordionRow label="Fabrication & Care">
               {storeProduct.material}. {storeProduct.care}.

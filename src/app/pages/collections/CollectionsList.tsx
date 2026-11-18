@@ -31,7 +31,7 @@ export function CollectionsList() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {collections.map((collection) => {
             const collectionProducts = products.filter(
-              p => p.collection === collection.name
+              p => p.collectionId === collection.id || (!p.collectionId && p.collection === collection.name)
             );
 
             return (

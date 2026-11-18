@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { useNavigate, useParams, Link } from 'react-router';
+import { useNavigate, useParams, Link, useSearchParams } from 'react-router';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -22,8 +22,9 @@ import defaultProductImage from '../../../imports/image-1.webp';
 
 export function ProductForm() {
   const { id } = useParams();
-  const { products, collections, addProduct, updateProduct, catalogLoadStatus } = useApp();
+  const { products, collections, subcollections, addProduct, updateProduct, catalogLoadStatus } = useApp();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const isEditing = !!id;
 
   const existingProduct = products.find(p => p.id === id);
@@ -34,12 +35,18 @@ export function ProductForm() {
     price: '',
     category: '',
     collection: '',
+    collectionId: '',
+    subcollectionId: '',
     description: '',
     tags: '',
     status: 'draft' as 'published' | 'draft',
     showOnWebsite: false,
     images: [] as string[],
     material: '',
+    productLength: '',
+    productWidth: '',
+    sleeveType: '',
+    inseam: '',
     fit: '',
     care: '',
     details: '',
@@ -63,19 +70,37 @@ export function ProductForm() {
         price: existingProduct.price.toString(),
         category: existingProduct.category,
         collection: existingProduct.collection,
+        collectionId: existingProduct.collectionId ?? collections.find(collection => collection.name === existingProduct.collection)?.id ?? '',
+        subcollectionId: existingProduct.subcollectionId ?? '',
         description: existingProduct.description,
         tags: (existingProduct.tags ?? []).join(', '),
         status: existingProduct.status,
         showOnWebsite: existingProduct.showOnWebsite,
         images: existingProduct.images ?? [],
         material: existingProduct.material ?? '',
+        productLength: existingProduct.productLength ?? '',
+        productWidth: existingProduct.productWidth ?? '',
+        sleeveType: existingProduct.sleeveType ?? '',
+        inseam: existingProduct.inseam ?? '',
         fit: existingProduct.fit ?? '',
         care: existingProduct.care ?? '',
         details: (existingProduct.details ?? []).join(', '),
         variants: existingProduct.variants?.length ? existingProduct.variants : (existingProduct.sizes ?? []).map(size => ({ id: crypto.randomUUID(), sku: '', color: existingProduct.color ?? '', colorHex: existingProduct.colorHex, size, inventoryQuantity: 0, isActive: true })),
       });
     }
-  }, [existingProduct]);
+  }, [existingProduct, collections]);
+
+  const preselectedCollection = searchParams.get('collection') ?? '';
+  const preselectedSubcollection = searchParams.get('subcollection') ?? '';
+  useEffect(() => {
+    if (isEditing || !preselectedCollection || !collections.length || formData.collectionId) return;
+    const collection = collections.find(item => item.id === preselectedCollection || item.name === preselectedCollection);
+    if (!collection) return;
+    setFormData(previous => ({ ...previous, collection: collection.name, collectionId: collection.id, subcollectionId: preselectedSubcollection }));
+  }, [collections, formData.collectionId, isEditing, preselectedCollection, preselectedSubcollection]);
+
+  const selectedCollectionId = formData.collectionId || collections.find(collection => collection.name === formData.collection)?.id || '';
+  const availableSubcollections = subcollections.filter(item => item.collectionId === selectedCollectionId);
 
   const normalizedVariants = () => formData.variants.map(variant => ({
     ...variant,
@@ -91,6 +116,7 @@ export function ProductForm() {
       if (!Number.isFinite(Number(formData.price)) || Number(formData.price) <= 0) { toast.error('Enter a price greater than $0.'); return false; }
       if (!formData.category) { toast.error('Choose a product category to continue.'); return false; }
       if (!formData.collection) { toast.error('Choose a collection to continue.'); return false; }
+      if (availableSubcollections.length && !formData.subcollectionId) { toast.error('Choose a subcollection to continue.'); return false; }
     }
     if (step === 2) {
       const variants = normalizedVariants();
@@ -128,6 +154,8 @@ export function ProductForm() {
       price: parseFloat(formData.price),
       category: formData.category,
       collection: formData.collection,
+      collectionId: selectedCollectionId || undefined,
+      subcollectionId: formData.subcollectionId || undefined,
       description: formData.description.trim(),
       tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
       status: formData.status,
@@ -138,6 +166,10 @@ export function ProductForm() {
       colorHex: variants[0]?.colorHex ?? '#111111',
       details: formData.details.split(',').map(value => value.trim()).filter(Boolean),
       material: formData.material.trim(),
+      productLength: formData.productLength.trim() || undefined,
+      productWidth: formData.productWidth.trim() || undefined,
+      sleeveType: formData.sleeveType.trim() || undefined,
+      inseam: formData.inseam.trim() || undefined,
       fit: formData.fit.trim(),
       care: formData.care.trim(),
       sizes: Array.from(new Set<string>(variants.map(variant => variant.size))),
@@ -254,11 +286,14 @@ export function ProductForm() {
               <div className="grid gap-5 md:grid-cols-3">
                 <div><Label htmlFor="price">Retail price (USD) <span className="text-red-600">*</span></Label><div className="mt-2 flex h-12 items-center border border-neutral-300 bg-white"><span className="pl-3 text-sm text-neutral-500">$</span><Input id="price" type="number" inputMode="decimal" step="0.01" min="0.01" required value={formData.price} onChange={e => setFormData(prev => ({ ...prev, price: e.target.value }))} className="h-full rounded-none border-0" placeholder="0.00" /></div></div>
                 <div><Label htmlFor="category">Category <span className="text-red-600">*</span></Label><Select value={formData.category} onValueChange={value => setFormData(prev => ({ ...prev, category: value }))}><SelectTrigger id="category" className="mt-2 h-12 rounded-none border-neutral-300"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent><SelectItem value="Women's Tops">Women's Tops</SelectItem><SelectItem value="Dresses">Dresses</SelectItem><SelectItem value="Pants or skirts">Pants or skirts</SelectItem><SelectItem value="Jackets or coats">Jackets or coats</SelectItem><SelectItem value="Scarves or shawls">Scarves or shawls</SelectItem><SelectItem value="Natural-Fiber Clothing">Natural-Fiber Clothing</SelectItem><SelectItem value="Handwoven Collection">Handwoven Collection</SelectItem><SelectItem value="Leather Belts">Leather Belts</SelectItem></SelectContent></Select></div>
-                <div><Label htmlFor="collection">Collection <span className="text-red-600">*</span></Label><Select value={formData.collection} onValueChange={value => setFormData(prev => ({ ...prev, collection: value }))}><SelectTrigger id="collection" className="mt-2 h-12 rounded-none border-neutral-300"><SelectValue placeholder="Choose collection" /></SelectTrigger><SelectContent>{collections.filter(collection => collection.name?.trim()).map(collection => { const name = collection.name.trim(); return <SelectItem key={collection.id} value={name}>{name}</SelectItem>; })}</SelectContent></Select></div>
+                <div><Label htmlFor="collection">Collection <span className="text-red-600">*</span></Label><Select value={selectedCollectionId} onValueChange={value => { const collection = collections.find(item => item.id === value); setFormData(prev => ({ ...prev, collection: collection?.name ?? '', collectionId: value, subcollectionId: '' })); }}><SelectTrigger id="collection" className="mt-2 h-12 rounded-none border-neutral-300"><SelectValue placeholder="Choose collection" /></SelectTrigger><SelectContent>{collections.filter(collection => collection.name?.trim()).map(collection => <SelectItem key={collection.id} value={collection.id}>{collection.name.trim()}</SelectItem>)}</SelectContent></Select></div>
               </div>
+              {selectedCollectionId && <div className="grid gap-4 sm:grid-cols-2">
+                <div><Label htmlFor="subcollection">Subcollection {availableSubcollections.length > 0 && <span className="text-red-600">*</span>}</Label><Select value={formData.subcollectionId} onValueChange={value => setFormData(prev => ({ ...prev, subcollectionId: value }))} disabled={!availableSubcollections.length}><SelectTrigger id="subcollection" className="mt-2 h-12 rounded-none border-neutral-300"><SelectValue placeholder={availableSubcollections.length ? 'Choose subcollection' : 'No subcollections yet'} /></SelectTrigger><SelectContent>{availableSubcollections.map(item => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select><p className="mt-2 text-xs text-neutral-500">{availableSubcollections.length ? 'This becomes the heading above the products in the lookbook.' : <>Create a subcollection in <Link to={`/admin/collections/${selectedCollectionId}`} className="underline">collection settings</Link> to group products in the lookbook.</>}</p></div>
+              </div>}
               {collections.filter(collection => collection.name?.trim()).length === 0 && <p className="border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Create a collection before adding a product. <Link to="/admin/collections/new" className="underline">Create collection</Link></p>}
               <div><Label htmlFor="description">Description <span className="font-normal text-neutral-400">(optional)</span></Label><Textarea id="description" maxLength={3000} value={formData.description} onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))} className="mt-2 min-h-28 rounded-none border-neutral-300" placeholder="Describe the piece, fit, and feel…" /><p className="mt-1 text-right text-[11px] text-neutral-400">{formData.description.length}/3000</p></div>
-              <details className="border-t border-neutral-100 pt-5"><summary className="cursor-pointer text-sm font-medium">More product details <span className="font-normal text-neutral-400">(optional)</span></summary><div className="mt-5 grid gap-4 sm:grid-cols-2"><div><Label htmlFor="material">Fabric / material</Label><Input id="material" value={formData.material} onChange={e => setFormData(prev => ({ ...prev, material: e.target.value }))} className="mt-2 h-11 rounded-none border-neutral-300" placeholder="e.g. Cotton blend" /></div><div><Label htmlFor="fit">Fit</Label><Input id="fit" value={formData.fit} onChange={e => setFormData(prev => ({ ...prev, fit: e.target.value }))} className="mt-2 h-11 rounded-none border-neutral-300" placeholder="e.g. Relaxed" /></div><div><Label htmlFor="care">Care instructions</Label><Input id="care" value={formData.care} onChange={e => setFormData(prev => ({ ...prev, care: e.target.value }))} className="mt-2 h-11 rounded-none border-neutral-300" /></div><div><Label htmlFor="details">Additional details</Label><Input id="details" value={formData.details} onChange={e => setFormData(prev => ({ ...prev, details: e.target.value }))} className="mt-2 h-11 rounded-none border-neutral-300" placeholder="Separate details with commas" /></div></div></details>
+              <details className="border-t border-neutral-100 pt-5"><summary className="cursor-pointer text-sm font-medium">More product details <span className="font-normal text-neutral-400">(optional)</span></summary><div className="mt-5 grid gap-4 sm:grid-cols-2"><div><Label htmlFor="material">Fabric / material</Label><Input id="material" value={formData.material} onChange={e => setFormData(prev => ({ ...prev, material: e.target.value }))} className="mt-2 h-11 rounded-none border-neutral-300" placeholder="e.g. Cotton blend" /></div><div><Label htmlFor="productLength">Length</Label><Input id="productLength" value={formData.productLength} onChange={e => setFormData(prev => ({ ...prev, productLength: e.target.value }))} className="mt-2 h-11 rounded-none border-neutral-300" placeholder="Include unit if known, e.g. 28 in" /></div><div><Label htmlFor="productWidth">Width</Label><Input id="productWidth" value={formData.productWidth} onChange={e => setFormData(prev => ({ ...prev, productWidth: e.target.value }))} className="mt-2 h-11 rounded-none border-neutral-300" placeholder="Include unit if known" /></div><div><Label htmlFor="sleeveType">Sleeve type</Label><Input id="sleeveType" value={formData.sleeveType} onChange={e => setFormData(prev => ({ ...prev, sleeveType: e.target.value }))} className="mt-2 h-11 rounded-none border-neutral-300" placeholder="e.g. Long sleeve" /></div><div><Label htmlFor="inseam">Inseam</Label><Input id="inseam" value={formData.inseam} onChange={e => setFormData(prev => ({ ...prev, inseam: e.target.value }))} className="mt-2 h-11 rounded-none border-neutral-300" placeholder="Include unit if known" /></div><div><Label htmlFor="fit">Fit</Label><Input id="fit" value={formData.fit} onChange={e => setFormData(prev => ({ ...prev, fit: e.target.value }))} className="mt-2 h-11 rounded-none border-neutral-300" placeholder="e.g. Relaxed" /></div><div><Label htmlFor="care">Care instructions</Label><Input id="care" value={formData.care} onChange={e => setFormData(prev => ({ ...prev, care: e.target.value }))} className="mt-2 h-11 rounded-none border-neutral-300" /></div><div><Label htmlFor="details">Additional details</Label><Input id="details" value={formData.details} onChange={e => setFormData(prev => ({ ...prev, details: e.target.value }))} className="mt-2 h-11 rounded-none border-neutral-300" placeholder="Separate details with commas" /></div></div></details>
             </div>}
 
             {activeStep === 1 && <div>
