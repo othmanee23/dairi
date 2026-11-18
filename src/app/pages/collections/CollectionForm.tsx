@@ -22,7 +22,8 @@ export function CollectionForm() {
     if (!file) return;
     setProcessingImage(true);
     try {
-      setForm(previous => ({ ...previous, image: await readOptimizedImage(file, 1800) }));
+      const image = await readOptimizedImage(file, 1800);
+      setForm(previous => ({ ...previous, image }));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not read selected image');
     } finally { setProcessingImage(false); }
