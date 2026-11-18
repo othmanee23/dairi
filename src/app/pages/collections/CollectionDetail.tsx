@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button';
 import { ArrowLeft, BookOpen, Pencil, Plus, Trash2 } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { toast } from 'sonner';
+import { ProductForm } from '../products/ProductForm';
 
 export function CollectionDetail() {
   const { id } = useParams();
@@ -12,6 +13,8 @@ export function CollectionDetail() {
   const navigate = useNavigate();
   const [subcollectionName, setSubcollectionName] = useState('');
   const [savingSubcollection, setSavingSubcollection] = useState(false);
+  const [showProductFlow, setShowProductFlow] = useState(false);
+  const [initialProductSubcollectionId, setInitialProductSubcollectionId] = useState('');
 
   const collection = collections.find(c => c.id === id);
   const collectionProducts = products.filter(p => p.collectionId === collection?.id || (!p.collectionId && p.collection === collection?.name));
@@ -44,6 +47,11 @@ export function CollectionDetail() {
     if (!window.confirm(`Remove “${name}”? Its products will stay in this collection without a subcollection.`)) return;
     try { await deleteSubcollection(subcollectionId); toast.success('Subcollection removed'); }
     catch (error) { toast.error(error instanceof Error ? error.message : 'Could not remove subcollection'); }
+  };
+
+  const openProductFlow = (subcollectionId = '') => {
+    setInitialProductSubcollectionId(subcollectionId);
+    setShowProductFlow(true);
   };
 
   if (!collection) {
@@ -96,7 +104,7 @@ export function CollectionDetail() {
                 <BookOpen className="w-4 h-4 mr-2" />
                 Preview collection lookbook
               </Button>
-              <Button variant="outline" onClick={() => navigate(`/admin/products/new?collection=${encodeURIComponent(collection.id)}`)} className="rounded-none h-12 px-5"><Plus className="w-4 h-4 mr-2" />Add product</Button>
+              <Button variant="outline" onClick={() => openProductFlow()} className="rounded-none h-12 px-5"><Plus className="w-4 h-4 mr-2" />Add product</Button>
               <Button variant="outline" onClick={() => { if (window.confirm(`Delete ${collection.name}? Products will remain in the catalog without a collection.`)) void handleDelete(); }} className="rounded-none h-12 px-5 text-red-700"><Trash2 className="w-4 h-4 mr-2" />Delete</Button>
             </div>
             <p className="mt-4 text-sm text-neutral-600">{collectionProducts.length} products in this collection</p>
@@ -114,12 +122,26 @@ export function CollectionDetail() {
           {collectionSubcollections.length > 0 && <div className="mt-5 flex flex-wrap gap-2">{collectionSubcollections.map(item => <span key={item.id} className="inline-flex items-center gap-2 border border-neutral-200 px-3 py-2 text-sm">{item.name}<button type="button" aria-label={`Remove ${item.name}`} onClick={() => void handleDeleteSubcollection(item.id, item.name)} className="text-neutral-400 hover:text-red-700"><Trash2 className="h-3.5 w-3.5" /></button></span>)}</div>}
         </section>
 
+        {showProductFlow && <section className="mb-12 border border-neutral-200 bg-white p-5 sm:p-8" aria-label="Add product to collection">
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div><p className="text-[10px] uppercase tracking-[3px] text-black/40">Add to {collection.name}</p><h2 className="mt-2 text-2xl tracking-tight">Create a product</h2><p className="mt-2 text-sm text-neutral-600">The collection is preselected. Choose a subcollection, then complete the product steps without leaving this page.</p></div>
+            <Button type="button" variant="outline" onClick={() => setShowProductFlow(false)} className="h-10 rounded-none px-4">Close</Button>
+          </div>
+          <ProductForm
+            embedded
+            initialCollectionId={collection.id}
+            initialSubcollectionId={initialProductSubcollectionId}
+            onCancel={() => setShowProductFlow(false)}
+            onSaved={() => { setShowProductFlow(false); setInitialProductSubcollectionId(''); }}
+          />
+        </section>}
+
         <div>
           <h2 className="text-2xl mb-6 tracking-tight">Products by subcollection</h2>
           {collectionSubcollections.map(subcollection => {
             const items = collectionProducts.filter(product => product.subcollectionId === subcollection.id);
             return <section key={subcollection.id} className="mb-10">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-lg font-medium">{subcollection.name}</h3><p className="text-xs text-neutral-500">{items.length} products</p></div><Button variant="outline" onClick={() => navigate(`/admin/products/new?collection=${encodeURIComponent(collection.id)}&subcollection=${encodeURIComponent(subcollection.id)}`)} className="h-10 rounded-none px-4"><Plus className="mr-2 h-4 w-4" />Add product</Button></div>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-lg font-medium">{subcollection.name}</h3><p className="text-xs text-neutral-500">{items.length} products</p></div><Button variant="outline" onClick={() => openProductFlow(subcollection.id)} className="h-10 rounded-none px-4"><Plus className="mr-2 h-4 w-4" />Add product</Button></div>
               <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">{items.map(product => (
               <div
                 key={product.id}
@@ -139,8 +161,8 @@ export function CollectionDetail() {
               ))}</div>
             </section>;
           })}
-          {collectionProducts.some(product => !product.subcollectionId || !collectionSubcollections.some(item => item.id === product.subcollectionId)) && <section className="mb-10"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-lg font-medium">Unassigned products</h3><p className="text-xs text-neutral-500">Products without a subcollection</p></div><Button variant="outline" onClick={() => navigate(`/admin/products/new?collection=${encodeURIComponent(collection.id)}`)} className="h-10 rounded-none px-4"><Plus className="mr-2 h-4 w-4" />Add product</Button></div><div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">{collectionProducts.filter(product => !product.subcollectionId || !collectionSubcollections.some(item => item.id === product.subcollectionId)).map(product => <div key={product.id} className="group cursor-pointer" onClick={() => navigate(`/admin/products/${product.id}/edit`)}><div className="mb-3 aspect-[3/4] overflow-hidden bg-neutral-100"><ImageWithFallback src={product.images[0]} alt={product.name} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" /></div><h3 className="mb-1 truncate text-sm">{product.name}</h3><p className="text-sm text-neutral-600">${product.price}</p></div>)}</div></section>}
-          {collectionProducts.length === 0 && <p className="border border-dashed border-neutral-300 p-8 text-sm text-neutral-600">No products yet. Add products here, then assign each one to a subcollection in the product form.</p>}
+          {collectionProducts.some(product => !product.subcollectionId || !collectionSubcollections.some(item => item.id === product.subcollectionId)) && <section className="mb-10"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h3 className="text-lg font-medium">Unassigned products</h3><p className="text-xs text-neutral-500">Products without a subcollection</p></div><Button variant="outline" onClick={() => openProductFlow()} className="h-10 rounded-none px-4"><Plus className="mr-2 h-4 w-4" />Add product</Button></div><div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">{collectionProducts.filter(product => !product.subcollectionId || !collectionSubcollections.some(item => item.id === product.subcollectionId)).map(product => <div key={product.id} className="group cursor-pointer" onClick={() => navigate(`/admin/products/${product.id}/edit`)}><div className="mb-3 aspect-[3/4] overflow-hidden bg-neutral-100"><ImageWithFallback src={product.images[0]} alt={product.name} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" /></div><h3 className="mb-1 truncate text-sm">{product.name}</h3><p className="text-sm text-neutral-600">${product.price}</p></div>)}</div></section>}
+          {collectionProducts.length === 0 && <p className="border border-dashed border-neutral-300 p-8 text-sm text-neutral-600">No products yet. Create a subcollection above, then add products from its section to keep the lookbook organized.</p>}
         </div>
       </div>
     </div>

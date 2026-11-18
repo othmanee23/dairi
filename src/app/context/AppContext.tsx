@@ -69,7 +69,7 @@ async function saveProductVariants(productId: string, variants: ProductVariant[]
   }
 }
 const collectionFromRow = (row: CollectionRow): Collection => ({ id: row.id, name: row.name, description: row.description, season: row.season, image: upgradeLocalImageReference(row.image), productCount: row.product_count });
-const collectionToRow = (collection: Collection) => ({ id: collection.id, name: collection.name, description: collection.description, season: collection.season, image: collection.image, product_count: collection.productCount, is_published: true });
+const collectionToRow = async (collection: Collection) => ({ id: collection.id, name: collection.name, description: collection.description, season: collection.season, image: collection.image ? await uploadImageReference(collection.image, `collections/${collection.id}`) : '', product_count: collection.productCount, is_published: true });
 const subcollectionFromRow = (row: SubcollectionRow): Subcollection => ({ id: row.id, collectionId: row.collection_id, name: row.name, sortOrder: row.sort_order });
 const subcollectionToRow = (item: Subcollection) => ({ id: item.id, collection_id: item.collectionId, name: item.name.trim(), sort_order: item.sortOrder });
 const lookbookFromRow = (row: LookbookRow): Lookbook => ({ id: row.id, name: row.name, createdAt: row.created_at.slice(0, 10), productIds: row.product_ids, sections: row.sections ?? [], layout: row.layout, coverTitle: row.cover_title, coverImage: row.cover_image ? upgradeLocalImageReference(row.cover_image) : undefined, format: row.format });
@@ -299,9 +299,10 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     },
     addCollection: async collection => {
       if (!supabase) throw new Error('Supabase is not configured.');
-      const { error } = await supabase.from('collections').insert(collectionToRow(collection));
+      const row = await collectionToRow(collection);
+      const { error } = await supabase.from('collections').insert(row);
       if (error) throw new Error(error.message);
-      setState(s => ({ ...s, collections: [collection, ...s.collections] }));
+      setState(s => ({ ...s, collections: [{ ...collection, image: row.image }, ...s.collections] }));
     },
     updateCollection: async (id, patch) => {
       if (!supabase) throw new Error('Supabase is not configured.');
@@ -312,9 +313,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
         const productsResult = await supabase.from('products').update({ collection: patch.name }).eq('collection', current.name);
         if (productsResult.error) throw new Error(productsResult.error.message);
       }
-      const { error } = await supabase.from('collections').update(collectionToRow(next)).eq('id', id);
+      const row = await collectionToRow(next);
+      const { error } = await supabase.from('collections').update(row).eq('id', id);
       if (error) throw new Error(error.message);
-      setState(s => ({ ...s, collections: s.collections.map(collection => collection.id === id ? next : collection), products: patch.name && patch.name !== current.name ? s.products.map(p => p.collection === current.name ? { ...p, collection: patch.name! } : p) : s.products }));
+      const saved = { ...next, image: row.image };
+      setState(s => ({ ...s, collections: s.collections.map(collection => collection.id === id ? saved : collection), products: patch.name && patch.name !== current.name ? s.products.map(p => p.collection === current.name ? { ...p, collection: patch.name! } : p) : s.products }));
     },
     deleteCollection: async id => {
       if (!supabase) throw new Error('Supabase is not configured.');

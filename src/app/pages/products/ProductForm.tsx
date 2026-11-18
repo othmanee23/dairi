@@ -20,8 +20,17 @@ import { readOptimizedImage } from '../../utils/image';
 import { supabase } from '../../lib/supabase';
 import defaultProductImage from '../../../imports/image-1.webp';
 
-export function ProductForm() {
-  const { id } = useParams();
+interface ProductFormProps {
+  embedded?: boolean;
+  initialCollectionId?: string;
+  initialSubcollectionId?: string;
+  onCancel?: () => void;
+  onSaved?: () => void;
+}
+
+export function ProductForm({ embedded = false, initialCollectionId, initialSubcollectionId, onCancel, onSaved }: ProductFormProps) {
+  const { id: routeId } = useParams();
+  const id = embedded ? undefined : routeId;
   const { products, collections, subcollections, addProduct, updateProduct, catalogLoadStatus } = useApp();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -90,8 +99,8 @@ export function ProductForm() {
     }
   }, [existingProduct, collections]);
 
-  const preselectedCollection = searchParams.get('collection') ?? '';
-  const preselectedSubcollection = searchParams.get('subcollection') ?? '';
+  const preselectedCollection = initialCollectionId || searchParams.get('collection') || '';
+  const preselectedSubcollection = initialSubcollectionId || searchParams.get('subcollection') || '';
   useEffect(() => {
     if (isEditing || !preselectedCollection || !collections.length || formData.collectionId) return;
     const collection = collections.find(item => item.id === preselectedCollection || item.name === preselectedCollection);
@@ -116,7 +125,7 @@ export function ProductForm() {
       if (!Number.isFinite(Number(formData.price)) || Number(formData.price) <= 0) { toast.error('Enter a price greater than $0.'); return false; }
       if (!formData.category) { toast.error('Choose a product category to continue.'); return false; }
       if (!formData.collection) { toast.error('Choose a collection to continue.'); return false; }
-      if (availableSubcollections.length && !formData.subcollectionId) { toast.error('Choose a subcollection to continue.'); return false; }
+      if ((embedded || availableSubcollections.length > 0) && !formData.subcollectionId) { toast.error(embedded ? 'Create or choose a subcollection above before adding this product.' : 'Choose a subcollection to continue.'); return false; }
     }
     if (step === 2) {
       const variants = normalizedVariants();
@@ -185,7 +194,8 @@ export function ProductForm() {
         await addProduct(product);
         toast.success('Product created successfully');
       }
-      navigate('/admin/products');
+      if (embedded) onSaved?.();
+      else navigate('/admin/products');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not save product');
     } finally {
@@ -240,11 +250,11 @@ export function ProductForm() {
   const stepTitles = ['Product details', 'Product photos', 'Sizes and inventory', 'Review and publish'];
 
   return (
-    <div className="admin-page min-h-full px-5 py-7 sm:px-8 lg:px-10">
-      <div className="mx-auto max-w-5xl">
-        <Link to="/admin/products" className="mb-7 inline-flex items-center gap-2 text-sm text-neutral-600 transition-colors hover:text-black">
+    <div className={embedded ? 'w-full' : 'admin-page min-h-full px-5 py-7 sm:px-8 lg:px-10'}>
+      <div className={embedded ? 'mx-auto max-w-5xl' : 'mx-auto max-w-5xl'}>
+        {!embedded && <Link to="/admin/products" className="mb-7 inline-flex items-center gap-2 text-sm text-neutral-600 transition-colors hover:text-black">
           <ArrowLeft className="h-4 w-4" /> Products
-        </Link>
+        </Link>}
 
         <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -283,13 +293,13 @@ export function ProductForm() {
                 <div><Label htmlFor="name">Product name <span className="text-red-600">*</span></Label><Input id="name" autoFocus required maxLength={160} value={formData.name} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} className="mt-2 h-12 rounded-none border-neutral-300" placeholder="e.g. Structured Midi Dress" /></div>
                 <div><Label htmlFor="styleNumber">Style number <span className="text-red-600">*</span></Label><Input id="styleNumber" required maxLength={80} value={formData.styleNumber} onChange={e => setFormData(prev => ({ ...prev, styleNumber: e.target.value }))} className="mt-2 h-12 rounded-none border-neutral-300" placeholder="e.g. DF-2601" /></div>
               </div>
-              <div className="grid gap-5 md:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-3">
                 <div><Label htmlFor="price">Retail price (USD) <span className="text-red-600">*</span></Label><div className="mt-2 flex h-12 items-center border border-neutral-300 bg-white"><span className="pl-3 text-sm text-neutral-500">$</span><Input id="price" type="number" inputMode="decimal" step="0.01" min="0.01" required value={formData.price} onChange={e => setFormData(prev => ({ ...prev, price: e.target.value }))} className="h-full rounded-none border-0" placeholder="0.00" /></div></div>
                 <div><Label htmlFor="category">Category <span className="text-red-600">*</span></Label><Select value={formData.category} onValueChange={value => setFormData(prev => ({ ...prev, category: value }))}><SelectTrigger id="category" className="mt-2 h-12 rounded-none border-neutral-300"><SelectValue placeholder="Choose category" /></SelectTrigger><SelectContent><SelectItem value="Women's Tops">Women's Tops</SelectItem><SelectItem value="Dresses">Dresses</SelectItem><SelectItem value="Pants or skirts">Pants or skirts</SelectItem><SelectItem value="Jackets or coats">Jackets or coats</SelectItem><SelectItem value="Scarves or shawls">Scarves or shawls</SelectItem><SelectItem value="Natural-Fiber Clothing">Natural-Fiber Clothing</SelectItem><SelectItem value="Handwoven Collection">Handwoven Collection</SelectItem><SelectItem value="Leather Belts">Leather Belts</SelectItem></SelectContent></Select></div>
-                <div><Label htmlFor="collection">Collection <span className="text-red-600">*</span></Label><Select value={selectedCollectionId} onValueChange={value => { const collection = collections.find(item => item.id === value); setFormData(prev => ({ ...prev, collection: collection?.name ?? '', collectionId: value, subcollectionId: '' })); }}><SelectTrigger id="collection" className="mt-2 h-12 rounded-none border-neutral-300"><SelectValue placeholder="Choose collection" /></SelectTrigger><SelectContent>{collections.filter(collection => collection.name?.trim()).map(collection => <SelectItem key={collection.id} value={collection.id}>{collection.name.trim()}</SelectItem>)}</SelectContent></Select></div>
+                <div><Label htmlFor="collection">Collection <span className="text-red-600">*</span></Label><Select disabled={embedded && Boolean(initialCollectionId)} value={selectedCollectionId} onValueChange={value => { const collection = collections.find(item => item.id === value); setFormData(prev => ({ ...prev, collection: collection?.name ?? '', collectionId: value, subcollectionId: '' })); }}><SelectTrigger id="collection" className="mt-2 h-12 rounded-none border-neutral-300"><SelectValue placeholder="Choose collection" /></SelectTrigger><SelectContent>{collections.filter(collection => collection.name?.trim()).map(collection => <SelectItem key={collection.id} value={collection.id}>{collection.name.trim()}</SelectItem>)}</SelectContent></Select></div>
               </div>
               {selectedCollectionId && <div className="grid gap-4 sm:grid-cols-2">
-                <div><Label htmlFor="subcollection">Subcollection {availableSubcollections.length > 0 && <span className="text-red-600">*</span>}</Label><Select value={formData.subcollectionId} onValueChange={value => setFormData(prev => ({ ...prev, subcollectionId: value }))} disabled={!availableSubcollections.length}><SelectTrigger id="subcollection" className="mt-2 h-12 rounded-none border-neutral-300"><SelectValue placeholder={availableSubcollections.length ? 'Choose subcollection' : 'No subcollections yet'} /></SelectTrigger><SelectContent>{availableSubcollections.map(item => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select><p className="mt-2 text-xs text-neutral-500">{availableSubcollections.length ? 'This becomes the heading above the products in the lookbook.' : <>Create a subcollection in <Link to={`/admin/collections/${selectedCollectionId}`} className="underline">collection settings</Link> to group products in the lookbook.</>}</p></div>
+                <div><Label htmlFor="subcollection">Subcollection {availableSubcollections.length > 0 && <span className="text-red-600">*</span>}</Label><Select value={formData.subcollectionId} onValueChange={value => setFormData(prev => ({ ...prev, subcollectionId: value }))} disabled={!availableSubcollections.length}><SelectTrigger id="subcollection" className="mt-2 h-12 rounded-none border-neutral-300"><SelectValue placeholder={availableSubcollections.length ? 'Choose subcollection' : 'No subcollections yet'} /></SelectTrigger><SelectContent>{availableSubcollections.map(item => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select><p className="mt-2 text-xs text-neutral-500">{availableSubcollections.length ? 'This becomes the heading above the products in the lookbook.' : embedded ? 'Add a subcollection in the section above to organize this product in the lookbook.' : <>Create a subcollection in <Link to={`/admin/collections/${selectedCollectionId}`} className="underline">collection settings</Link> to group products in the lookbook.</>}</p></div>
               </div>}
               {collections.filter(collection => collection.name?.trim()).length === 0 && <p className="border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Create a collection before adding a product. <Link to="/admin/collections/new" className="underline">Create collection</Link></p>}
               <div><Label htmlFor="description">Description <span className="font-normal text-neutral-400">(optional)</span></Label><Textarea id="description" maxLength={3000} value={formData.description} onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))} className="mt-2 min-h-28 rounded-none border-neutral-300" placeholder="Describe the piece, fit, and feel…" /><p className="mt-1 text-right text-[11px] text-neutral-400">{formData.description.length}/3000</p></div>
@@ -341,7 +351,7 @@ export function ProductForm() {
           </section>
 
           <footer className="mt-5 flex flex-wrap items-center justify-between gap-3">
-            <Button type="button" variant="outline" onClick={() => activeStep === 0 ? navigate('/admin/products') : setActiveStep(step => Math.max(step - 1, 0))} className="h-11 rounded-none border-neutral-300 px-5"><ChevronLeft className="mr-1 h-4 w-4" />{activeStep === 0 ? 'Cancel' : 'Back'}</Button>
+            <Button type="button" variant="outline" onClick={() => activeStep === 0 ? (embedded ? onCancel?.() : navigate('/admin/products')) : setActiveStep(step => Math.max(step - 1, 0))} className="h-11 rounded-none border-neutral-300 px-5"><ChevronLeft className="mr-1 h-4 w-4" />{activeStep === 0 ? (embedded ? 'Back to collection' : 'Cancel') : 'Back'}</Button>
             <p className="hidden text-xs text-neutral-400 sm:block">Your changes are saved when you finish this setup.</p>
             {activeStep < steps.length - 1 ? <Button type="button" onClick={goToNextStep} className="h-11 rounded-none bg-black px-6 text-white hover:bg-neutral-800">Continue<ChevronRight className="ml-2 h-4 w-4" /></Button> : <Button type="button" onClick={() => void saveProduct()} disabled={saving} className="h-11 rounded-none bg-black px-6 text-white hover:bg-neutral-800 disabled:opacity-50">{saving ? 'Saving…' : isEditing ? 'Save changes' : formData.status === 'published' ? 'Publish product' : 'Create draft'}<Check className="ml-2 h-4 w-4" /></Button>}
           </footer>
