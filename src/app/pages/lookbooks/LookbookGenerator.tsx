@@ -117,6 +117,7 @@ function LookbookGeneratorContent() {
       setSelectedProducts(collectionProducts(collection.id).map(product => product.id));
       setLookbookName(collection.name);
       setCoverTitle(collection.name);
+      setCoverImage(collection.image || '');
     }
     setSelectionInitialized(true);
   }, [catalogLoadStatus, collections, searchParams, selectedCollectionIds.length, selectionInitialized, subcollections, products]);
@@ -134,6 +135,8 @@ function LookbookGeneratorContent() {
     setSelectedCollectionIds(current => current.includes(collectionId) ? current : [...current, collectionId]);
     setSelectedSubcollectionIds(current => [...new Set([...current, ...children.map(item => item.id)])]);
     setSelectedProducts(current => [...new Set([...current, ...productIds])]);
+    const collection = collections.find(item => item.id === collectionId);
+    if (!coverImage.trim() && collection?.image) setCoverImage(collection.image);
   };
 
   const toggleSubcollection = (subcollectionId: string) => {

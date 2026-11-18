@@ -65,59 +65,54 @@ export function CollectionDetail() {
   }
 
   return (
-    <div className="admin-page p-8 lg:p-10">
+    <div className="admin-page p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <Link
           to="/admin/collections"
-          className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-black mb-8 transition-colors"
+          className="inline-flex items-center gap-2 text-sm text-neutral-600 hover:text-black mb-5 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to collections
         </Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12">
-          <div>
-            <div className="aspect-[4/5] bg-neutral-100 overflow-hidden">
+        <div className="mb-8 flex flex-col gap-5 border-b border-neutral-200 pb-7 sm:flex-row sm:items-center">
+          <div className="h-36 w-32 shrink-0 overflow-hidden bg-neutral-100 sm:h-40 sm:w-36">
               <ImageWithFallback
                 src={collection.image}
                 alt={collection.name}
                 className="w-full h-full object-cover"
               />
-            </div>
           </div>
 
-          <div className="flex flex-col justify-center">
-            <div className="inline-block px-3 py-1 bg-neutral-100 text-xs uppercase tracking-wider mb-4 self-start">
+          <div className="min-w-0 flex-1">
+            <div className="inline-block px-3 py-1 bg-neutral-100 text-xs uppercase tracking-wider mb-2">
               {collection.season}
             </div>
-            <h1 className="text-5xl mb-4 tracking-tight">{collection.name}</h1>
-            <p className="text-lg text-neutral-600 mb-8">
+            <h1 className="text-3xl sm:text-4xl mb-2 tracking-tight">{collection.name}</h1>
+            <p className="text-sm text-neutral-600 mb-3 max-w-3xl">
               {collection.description}
             </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button variant="outline" onClick={() => navigate(`/admin/collections/${collection.id}/edit`)} className="rounded-none h-12 px-5"><Pencil className="w-4 h-4 mr-2" />Edit</Button>
+            <p className="mb-4 text-xs text-neutral-500">{collectionProducts.length} products · {collectionSubcollections.length} subcollections</p>
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 onClick={() => navigate(`/admin/lookbooks?collection=${encodeURIComponent(collection.id)}`)}
-                className="bg-black text-white hover:bg-neutral-800 rounded-none h-12 px-6"
+                className="bg-black text-white hover:bg-neutral-800 rounded-none h-10 px-4"
               >
                 <BookOpen className="w-4 h-4 mr-2" />
-                Preview collection lookbook
+                Preview lookbook
               </Button>
-              <Button variant="outline" onClick={() => openProductFlow()} className="rounded-none h-12 px-5"><Plus className="w-4 h-4 mr-2" />Add product</Button>
-              <Button variant="outline" onClick={() => { if (window.confirm(`Delete ${collection.name}? Products will remain in the catalog without a collection.`)) void handleDelete(); }} className="rounded-none h-12 px-5 text-red-700"><Trash2 className="w-4 h-4 mr-2" />Delete</Button>
+              <Button variant="outline" onClick={() => navigate(`/admin/collections/${collection.id}/edit`)} className="rounded-none h-10 px-4"><Pencil className="w-4 h-4 mr-2" />Edit collection</Button>
+              <Button variant="outline" onClick={() => { if (window.confirm(`Delete ${collection.name}? Products will remain in the catalog without a collection.`)) void handleDelete(); }} className="rounded-none h-10 px-4 text-red-700"><Trash2 className="w-4 h-4 mr-2" />Delete</Button>
             </div>
-            <p className="mt-4 text-sm text-neutral-600">{collectionProducts.length} products in this collection</p>
           </div>
         </div>
 
-        <section className="mb-12 border-y border-neutral-200 py-6">
-          <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
-            <div><h2 className="text-2xl tracking-tight">Subcollections</h2><p className="mt-1 text-sm text-neutral-600">These names appear as headings in the lookbook.</p></div>
-          </div>
+        <section className="mb-8 rounded-sm border border-neutral-200 bg-white p-4 sm:p-5">
+          <div className="mb-3"><h2 className="text-lg tracking-tight">Subcollections</h2><p className="mt-1 text-xs text-neutral-600">Subcollection names appear as headings in the lookbook. Create one before adding products.</p></div>
           <form onSubmit={handleAddSubcollection} className="flex max-w-xl gap-3">
             <input aria-label="New subcollection name" value={subcollectionName} onChange={event => setSubcollectionName(event.target.value)} maxLength={120} required placeholder="e.g. Knitwear" className="h-11 min-w-0 flex-1 border border-neutral-300 bg-white px-3 text-sm" />
-            <Button type="submit" disabled={savingSubcollection} className="admin-button h-11 rounded-none bg-black px-5 text-white">{savingSubcollection ? 'Adding…' : 'Add subcollection'}</Button>
+            <Button type="submit" disabled={savingSubcollection} className="admin-button h-11 rounded-none bg-black px-4 text-white">{savingSubcollection ? 'Adding…' : 'Create'}</Button>
           </form>
           {collectionSubcollections.length > 0 && <div className="mt-5 flex flex-wrap gap-2">{collectionSubcollections.map(item => <span key={item.id} className="inline-flex items-center gap-2 border border-neutral-200 px-3 py-2 text-sm">{item.name}<button type="button" aria-label={`Remove ${item.name}`} onClick={() => void handleDeleteSubcollection(item.id, item.name)} className="text-neutral-400 hover:text-red-700"><Trash2 className="h-3.5 w-3.5" /></button></span>)}</div>}
         </section>
